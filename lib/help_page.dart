@@ -28,13 +28,17 @@ Whilst in "Edit Mode" dummy values are shown, usually the value "12.3". This all
 
 Swiping up or pressing the back button hides the top bar.
 
-For "Auto Discovery" of your SignalK server, mDNS must be turned on in your server's settings. If discovery does not work, enter your server's hostname/IP and port number.
+For "Auto Discovery" of your SignalK server, mDNS must be turned on in your server's settings. If discovery does not work, enter your server's URL.
 
 The "Subscription Min Period" is the minimum time between data updates. Increasing this value will reduce the load on your SignalK server.
 
 If no data is received within the "Connection Timeout" the connection is reopened.
 
 If a Box receives no data within the "Data Timeout" the box is cleared and a "-" is generally displayed.
+
+You can set additional HTTP Headers if the connection to the SignalK server requires them, e.g. for proxies.
+
+Notifications sent from SignalK are displayed at the bottom of the app, with appropriate sounds if requested by the server. If repeat notifications are sent with the same severity, then the number displayed for normal/nominal is 1, alert is 5, warn is 10, alarm is 20 and emergency is 30.
 
 In "Demo Mode" the app connects to "https://demo.signalk.org".
 
@@ -47,6 +51,7 @@ If setting time is enabled via the "--enable-set-time" command line option and "
       const ListTile(leading: Icon(Icons.mode_night), title: Text('Enables Night Mode')),
       const ListTile(leading: Icon(Icons.brightness_high), title: Text('Cycles the brightness on supported platforms')),
       const ListTile(leading: Icon(Icons.sync_alt), title: Text('Toggles the Auto-Page rotation. Set the per-page delays in the page list. Pages without delays are not shown')),
+      const ListTile(leading: Icon(Icons.format_list_bulleted), title: Text('Shows the notification log')),
       const ListTile(leading: Icon(Icons.volume_off), title: Text('Un-mutes notifications')),
       const ListTile(leading: Icon(Icons.copy), title: Text('Copy/Clone a Page')),
       const ListTile(leading: Icon(Icons.drag_handle), title: Text('Drag handle for reordering pages')),

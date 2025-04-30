@@ -141,7 +141,6 @@ When you drop your anchor press the '''),
         TextSpan(text: ''' button to set the alarm radius. The "Alarm Radius Fudge Factor" setting in the signalk-anchoralarm-plugin gets added to your current distance from the anchor.
 
 Once set, the anchor position can be moved by unlocking and dragging the anchor.''')]))),
-      const ListTile(leading: Icon(Icons.notifications_outlined), title: Text('Mutes the alarm')),
       const ListTile(leading: Icon(Icons.anchor), title: Text('Marks the anchor at the current boat position')),
       const ListTile(leading: Icon(Icons.lock), title: Text('Locks/Unlocks the ability to move or set the anchor')),
       const ListTile(leading: Icon(Icons.highlight_off), title: Text('Sets the alarm radius to the current boat position')),
@@ -305,7 +304,7 @@ class _AnchorState extends State<AnchorAlarmBox> {
       Uri uri = widget.config.controller.httpApiUri.replace(
           path: '/plugins/anchoralarm/$path');
 
-      http.Response response = await http.post(
+      http.Response response = await widget.config.controller.httpPost(
           uri,
           headers: {
             "Content-Type": "application/json",
@@ -347,26 +346,34 @@ class _AnchorState extends State<AnchorAlarmBox> {
               }
               break;
             case 'navigation.anchor.position':
-              _anchorPosition = ll.LatLng((u.value['latitude'] as num).toDouble(), (u.value['longitude'] as num).toDouble());
+              if(u.value != null) _anchorPosition = ll.LatLng((u.value['latitude'] as num).toDouble(), (u.value['longitude'] as num).toDouble());
               break;
             case 'navigation.anchor.maxRadius':
               try {
-                _maxRadius = (u.value as num).round();
+                if(u.value == null) {
+                  _maxRadius = null;
+                } else {
+                  _maxRadius = (u.value as num).round();
+                }
               } catch (_){
                 // This only happens if the Anchor Alarm webapp is used.
                 _maxRadius = int.parse(u.value as String);
               }
               break;
             case 'navigation.anchor.currentRadius':
-              _currentRadius = (u.value as num).round();
-              // Make sure we have a radius to avoid div-by-zero error.
-              _currentRadius = _currentRadius == 0 ? 1 : _currentRadius;
+              if(u.value == null) {
+                _currentRadius = null;
+              } else {
+                _currentRadius = (u.value as num).round();
+                // Make sure we have a radius to avoid div-by-zero error.
+                _currentRadius = _currentRadius == 0 ? 1 : _currentRadius;
+              }
               break;
             case 'navigation.anchor.bearingTrue':
-              _bearingTrue = (u.value as num).toDouble()-m.pi;
+              if(u.value != null) _bearingTrue = (u.value as num).toDouble()-m.pi;
               break;
             case 'navigation.anchor.apparentBearing':
-              _apparentBearing = (u.value as num).toDouble();
+              if(u.value != null) _apparentBearing = (u.value as num).toDouble();
               break;
           }
         } catch (e) {

@@ -12,7 +12,6 @@ class _EditPage extends StatefulWidget {
   @override
   State<_EditPage> createState() => _EditPageState();
 }
-// TODO need to make these menu names more consistent. Probably move labels into menu list so we can shorten names.
 final List<BoxDetails> boxDetails = [
   BoxDetails(BlankBox.sid, (config) {return BlankBox(config, key: UniqueKey());}), // This is the default Box.
   BoxDetails(HelpBox.sid, (config) {return HelpBox(config, key: UniqueKey());}),
@@ -214,14 +213,14 @@ class _EditPageState extends State<_EditPage> {
           _widgetMenuEntry(CrossTrackErrorGraph.sid, 'XTE'),
           _widgetMenuEntry(CrossTrackErrorDeltaBox.sid, 'XTE Delta'),
         ]),
-        _widgetMenuEntry(RateOfTurnBox.sid, 'Rote of Turn'),
+        _widgetMenuEntry(RateOfTurnBox.sid, 'Rate of Turn'),
         _widgetMenuEntry(MagneticVariationBox.sid, 'Magnetic Variation'),
       ]),
       _widgetSubMenuEntry(box, 'Boat', [
         _widgetSubMenuEntry(box, 'Speed', [
-          _widgetMenuEntry(SpeedThroughWaterBox.sid, 'Speed'),
-          _widgetMenuEntry(MaxSpeedThroughWaterBox.sid, 'Max Speed'),
-          _widgetMenuEntry(SpeedThroughWaterGraph.sid, 'Speed'),
+          _widgetMenuEntry(SpeedThroughWaterBox.sid, 'STW'),
+          _widgetMenuEntry(MaxSpeedThroughWaterBox.sid, 'Max STW'),
+          _widgetMenuEntry(SpeedThroughWaterGraph.sid, 'STW'),
         ]),
         _widgetMenuEntry(RudderAngleBox.sid, 'Rudder Angle'),
         _widgetMenuEntry(AttitudeRollGaugeBox.sid, 'Roll'),
