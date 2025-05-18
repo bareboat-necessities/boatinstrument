@@ -5,7 +5,7 @@ orbs:
   android: circleci/android@3.1.0             # see: https://circleci.com/developer/orbs/orb/circleci/android
   macos: circleci/macos@2.5.2                 # see: https://circleci.com/developer/orbs/orb/circleci/macos
 
-executors:   # see: https://circleci.com/docs/sample-config/
+executors:    # see: https://circleci.com/docs/sample-config/
   boot-linux:
     machine:
       resource_class: large
