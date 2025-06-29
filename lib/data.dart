@@ -103,7 +103,7 @@ class _SignalkPathDropdownMenuState extends State<SignalkPathDropdownMenu> {
     getPaths();
   }
 
-  _paths(String path, Map<String, dynamic> data, bool add, List<String> paths) {
+  void _paths(String path, Map<String, dynamic> data, bool add, List<String> paths) {
     if(add) {
       paths.add(path);
     }
@@ -235,6 +235,10 @@ class HelpTextWidget extends StatelessWidget {
   }
 }
 
+class HeaderText extends Text {
+  const HeaderText(super.text, {super.style, super.textAlign, super.key}) : super(softWrap: false, overflow: TextOverflow.ellipsis);
+}
+
 abstract class BoxWidget extends StatefulWidget {
   final BoxWidgetConfig config;
 
@@ -278,6 +282,35 @@ abstract class BoxWidget extends StatefulWidget {
   // This would normally be a simple Text Widget.
   Widget? getSettingsHelp() => null;
   Widget? getPerBoxSettingsHelp() => null;
+}
+
+class HeadedBoxState<T extends BoxWidget> extends State<T> {
+  static const double pad = 5.0;
+
+  String header = '';
+  String text = '';
+  int lines = 1;
+  Alignment alignment = Alignment.center;
+  Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
+
+    double fontSize = maxFontSize(text, style,
+      ((widget.config.constraints.maxHeight - style.fontSize! - (3 * pad)) / lines),
+      widget.config.constraints.maxWidth - (2 * pad));
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child:
+        HeaderText(header, style: style),
+      ),
+      // We need to disable the device text scaling as this interferes with our text scaling.
+      Expanded(child: Align(alignment: alignment, child: Padding(padding: const EdgeInsets.all(pad),
+          child: Text(text, textScaler: TextScaler.noScaling,
+              style: style.copyWith(fontSize: fontSize, color: color)))))
+      ]);
+  }
 }
 
 abstract class BoxSettingsWidget extends StatefulWidget {
@@ -341,7 +374,7 @@ class _HelpBoxState extends State<HelpBox> {
     ]);
   }
 
-  _showHelpPage () async {
+  Future<void> _showHelpPage () async {
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) {
           return _HelpPage();
@@ -394,11 +427,11 @@ class _BoxData {
   final bool dataTimeout;
   List<RegExp> regExpPaths = [];
   List<RegExp> regExpStaticPaths = [];
-  DateTime lastUpdate = DateTime.now();
+  DateTime lastUpdate;
   List<Update> updates = [];
   List<Update> staticUpdates = [];
 
-  _BoxData(this.onUpdate, this.paths, this.onStaticUpdate, this.staticPaths, this.dataTimeout);
+  _BoxData(this.lastUpdate, this.onUpdate, this.paths, this.onStaticUpdate, this.staticPaths, this.dataTimeout);
 }
 
 class _Resizable {
@@ -736,30 +769,49 @@ class _Settings {
 
   Map<String, dynamic> toJson() => _$SettingsToJson(this);
 
-  static Future<_Settings> load() async {
-    Directory directory = await path_provider.getApplicationDocumentsDirectory();
-    _store = File('${directory.path}/boatinstrument.json');
+  static Future<_Settings> load(String configFile) async {
+    if(configFile.startsWith('/')) {
+      _store = File(configFile);
+    } else {
+      Directory directory = await path_provider.getApplicationDocumentsDirectory();
+      _store = File('${directory.path}/$configFile');
+    }
 
     return await readSettings(_store!);
   }
 
-  static readSettings(File f) async {
-    String s = f.readAsStringSync();
-    dynamic data = json.decode(s);
-    if(data['version'] == 0) {
-      CircularLogger().i('Backing up configuration file');
-      f.copy('${f.path}.v0');
-      CircularLogger().i('Converting configuration from version 0 to 1');
-      String h = data['signalkHost'];
-      String url = 'http://$h:${data['signalkPort']}';
-      if(h.isEmpty) url = '';
-      data['signalkUrl'] = url;
-     data['version'] = 1;
+  static Future<_Settings> readSettings(File f) async {
+    var l =  CircularLogger();
+
+    _Settings settings;
+
+    try {
+      String s = f.readAsStringSync();
+      dynamic data = json.decode(s);
+
+      if(data['version'] == 0) {
+        l.i('Backing up configuration file');
+        f.copy('${f.path}.v0');
+        l.i('Converting configuration from version 0 to 1');
+        String h = data['signalkHost'];
+        String url = 'http://$h:${data['signalkPort']}';
+        if(h.isEmpty) url = '';
+        data['signalkUrl'] = url;
+      data['version'] = 1;
+      }
+
+      settings =_Settings.fromJson(data);
+    } catch (e) {
+      var backupPath = '${f.path}.bad.${DateTime.now()}';
+      l.e('Failed to decode config. Backing up to $backupPath', error: e);
+      f.copy(backupPath);
+
+      rethrow;
     }
-    return _Settings.fromJson(data);
+    return settings;
   }
 
-  _save (){
+  void _save (){
     _store?.writeAsStringSync(json.encode(toJson()));
   }
 }
@@ -847,7 +899,7 @@ abstract class BackgroundData {
   double? get value => values[id];
   set value(double? value) => values[id] = value;
 
-  processUpdates(List<Update>? updates) {
+  void processUpdates(List<Update>? updates) {
     if(updates != null) {
       try {
         double next =(updates[0].value as num).toDouble();
@@ -860,7 +912,7 @@ abstract class BackgroundData {
           } else {
             value = next;
           }
-          DateTime now = DateTime.now();
+          DateTime now = controller!.now();
           if(data.isNotEmpty && data.first.date.isAfter(now.subtract(duration)) && data.length/data.capacity > 0.8) {
             data = CircularBuffer<DataPoint>.of(data, data.capacity+dataIncrement);
           }

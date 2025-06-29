@@ -435,8 +435,8 @@ class DoubleValueBarGaugeBoxState<T extends DoubleValueBarGaugeBox> extends Doub
     const double pad = 5.0;
     final TextStyle style = Theme.of(context).textTheme.titleMedium!;
 
-    return Column(mainAxisAlignment: MainAxisAlignment.start, children: [
-      Row(children: [Padding(padding: const EdgeInsets.all(pad), child: Text('${widget.title}${widget.showPercent?' ${((value??0)*100).toInt()}%':''}', style: style))]),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(padding: const EdgeInsets.all(pad), child: HeaderText('${widget.title}${widget.showPercent?' ${((value??0)*100).toInt()}%':''}', style: style)),
       Expanded(child: Padding(padding: const EdgeInsets.only(left: pad, right: pad),
         child: RepaintBoundary(child: CustomPaint(
           size: Size.infinite,
@@ -481,9 +481,11 @@ class _GraphPainter extends CustomPainter {
     }
 
     int slice = ((_minutes*60)/w).ceil();
+    Duration sliceDuration = Duration(seconds: slice);
+
     List<double?> values = List.filled(((_minutes*60)/slice).ceil(), null);
-    DateTime now = DateTime.now();
-    DateTime start = DateTime(
+    DateTime now = _widget.config.controller.now();
+    DateTime start = DateTime.utc(
       now.year,
       now.month,
       now.day,
@@ -500,7 +502,7 @@ class _GraphPainter extends CustomPainter {
       double total = 0;
       int count = 0;
 
-      start = start.subtract(Duration(seconds: slice));
+      start = start.subtract(sliceDuration);
       while(dp >= 0 && _data[dp].date.isAfter(start)) {
         total += _data[dp].value;
         ++count;
@@ -726,7 +728,7 @@ class GraphBoxState extends State<GraphBox> {
     super.dispose();
   }
 
-  _update(_) {
+  void _update(Timer _) {
     if(mounted) {
       setState(() {});
     }
@@ -750,7 +752,7 @@ class GraphBoxState extends State<GraphBox> {
       Padding(padding: const EdgeInsets.only(left: pad, right: pad), child: Row(children: [
         Text('${widget.title} ${widget._settings.displayDuration.displayName}', style: Theme.of(context).textTheme.titleMedium),
         Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          Expanded(child: Text(currentValueString, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium)),
+          Expanded(child: HeaderText(currentValueString, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium)),
           IconButton(icon: Icon(Icons.add), onPressed: _increaseTime),
           IconButton(icon: Icon(Icons.remove), onPressed: _decreaseTime),
         ]))

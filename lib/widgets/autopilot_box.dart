@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as m;
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -29,7 +30,7 @@ class _AutopilotControlSettings {
   String authToken;
 
   _AutopilotControlSettings({
-    clientID,
+    String? clientID,
     this.authToken = ''
   }) : clientID = clientID??'boatinstrument-autopilot-${customAlphabet('0123456789', 4)}';
 }
@@ -98,7 +99,7 @@ abstract class AutopilotControlBoxState<T extends AutopilotControlBox> extends S
     super.dispose();
   }
   
-  _sendCommand(String path, String params) async {
+  Future<void> _sendCommand(String path, String params) async {
 
     if(widget.config.editMode) {
       return;
@@ -132,7 +133,7 @@ abstract class AutopilotControlBoxState<T extends AutopilotControlBox> extends S
     }
   }
 
-  _unlock() {
+  Future<void> _unlock() async {
     if(_locked) {
       setState(() {
         _locked = false;
@@ -149,7 +150,6 @@ abstract class AutopilotControlBoxState<T extends AutopilotControlBox> extends S
       }
     });
   }
-
 }
 
 abstract class AutopilotStateControlBox extends AutopilotControlBox {
@@ -163,7 +163,7 @@ abstract class AutopilotStateControlBox extends AutopilotControlBox {
 
 class _AutopilotStateControlBoxState extends AutopilotControlBoxState<AutopilotStateControlBox> {
 
-  _setState(AutopilotState state) async {
+  Future<void> _setState(AutopilotState state) async {
     if(await widget.config.controller.askToConfirm(context, 'Change to "${state.displayName}"?')) {
       await _sendCommand("steering/autopilot/state", '{"value": "${state.name}"}');
     }
@@ -207,14 +207,14 @@ class AutopilotStateControlHorizontalBox extends AutopilotStateControlBox {
 
   static const String sid = 'autopilot-control-state-horizontal';
 
-  AutopilotStateControlHorizontalBox(config, {super.key}) : super(config, false);
+  AutopilotStateControlHorizontalBox(BoxWidgetConfig config, {super.key}) : super(config, false);
 }
 
 class AutopilotStateControlVerticalBox extends AutopilotStateControlBox {
 
   static const String sid = 'autopilot-control-state-vertical';
 
-  AutopilotStateControlVerticalBox(config, {super.key}) : super(config, true);
+  AutopilotStateControlVerticalBox(BoxWidgetConfig config, {super.key}) : super(config, true);
 }
 
 abstract class AutopilotHeadingControlBox extends AutopilotControlBox {
@@ -224,11 +224,11 @@ abstract class AutopilotHeadingControlBox extends AutopilotControlBox {
 
 abstract class _AutopilotHeadingControlBoxState<T extends AutopilotHeadingControlBox> extends AutopilotControlBoxState<T> {
 
-  _adjustHeading(int direction) async {
+  Future<void> _adjustHeading(int direction) async {
     await _sendCommand("steering/autopilot/actions/adjustHeading", '{"value": $direction}');
   }
 
-  _autoTack(String direction) async {
+  Future<void> _autoTack(String direction) async {
     if(await widget.config.controller.askToConfirm(context, 'Tack to "$direction"?')) {
       await _sendCommand("steering/autopilot/actions/tack", '{"value": "$direction"}');
     }
@@ -501,7 +501,7 @@ class _AutopilotStatusState extends State<AutopilotStatusBox> {
         double? headingTrue = _targetHeadingTrue;
         if(headingTrue == null && (_targetHeadingMagnetic != null &&
             _magneticVariation != null)) {
-          headingTrue = _targetHeadingMagnetic! + _magneticVariation!;
+          headingTrue = (_targetHeadingMagnetic! + _magneticVariation!) % (m.pi*2);
         }
         if(headingTrue != null) {
           target = 'HDG: ${rad2Deg(headingTrue)}';
@@ -522,8 +522,8 @@ class _AutopilotStatusState extends State<AutopilotStatusBox> {
         (widget.config.constraints.maxHeight - style.fontSize! - (3 * pad)) / 2,
         widget.config.constraints.maxWidth - (2 * pad));
 
-    return Column(mainAxisAlignment: MainAxisAlignment.start, children: [
-      Row(children: [Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: Text('Autopilot', style: style))]),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: Text('Autopilot', style: style)),
       // We need to disable the device text scaling as this interferes with our text scaling.
       Expanded(child: Center(child: Padding(padding: const EdgeInsets.all(pad),
           child: Text(text, textScaler: TextScaler.noScaling,
@@ -531,7 +531,7 @@ class _AutopilotStatusState extends State<AutopilotStatusBox> {
     ]);
   }
 
-  _processData(List<Update>? updates) {
+  void _processData(List<Update>? updates) {
     if(updates == null) {
       _autopilotState = null;
     } else {

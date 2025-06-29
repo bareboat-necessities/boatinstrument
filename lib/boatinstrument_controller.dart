@@ -120,6 +120,8 @@ class BoatInstrumentController {
   WebSocketChannel? _channel;
   Timer? _networkTimer;
   AudioPlayer? _audioPlayer;
+  DateTime? _time;
+  DateTime _timeReceived = DateTime.now();
   final Map<String, NotificationStatus> _notifications = {};
   final Set<String> _backgroundIDs = {};
   final Set<String> _paths = {};
@@ -156,6 +158,12 @@ class BoatInstrumentController {
   bool get muted => _notifications.entries.any((element) => element.value.mute);
   Set<String> get paths => _paths;
   Set<String> get staticPaths => _staticPaths;
+
+  DateTime now() {
+    DateTime now = DateTime.now();
+    if(_time != null) return _time!.add(now.difference(_timeReceived));
+    return now;
+  }
 
   Color val2PSColor(BuildContext context, num val, {Color? none}) {
     if(_settings!.portStarboardColors == PortStarboardColors.none) {
@@ -327,7 +335,7 @@ class BoatInstrumentController {
     }
   }
 
-  _loadDefaultConfig(bool portrait) async {
+  Future<void> _loadDefaultConfig(bool portrait) async {
     String config = portrait ?
       'default-config-portrait.json' :
       'default-config-landscape.json';
@@ -335,9 +343,9 @@ class BoatInstrumentController {
     _settings = _Settings.fromJson(jsonDecode(s));
   }
 
-  loadSettings(bool portrait) async {
+  Future<void> loadSettings(String configFile, bool portrait) async {
     try {
-      _settings = await _Settings.load();
+      _settings = await _Settings.load(configFile);
     } on Exception catch (e) {
       l.e('Exception loading Settings', error: e);
       await _loadDefaultConfig(portrait);
@@ -377,7 +385,7 @@ class BoatInstrumentController {
       ++_boxesOnPage;
     }
 
-    _BoxData bd = _BoxData(onUpdate, paths??{}, onStaticUpdate, staticPaths??{}, dataTimeout);
+    _BoxData bd = _BoxData(now(), onUpdate, paths??{}, onStaticUpdate, staticPaths??{}, dataTimeout);
     _boxData.add(bd);
 
     for(String path in bd.paths) {
@@ -547,8 +555,8 @@ class BoatInstrumentController {
     _notifications.clear();
   }
 
-  _onNotification(BuildContext context, List<Update>? updates) {
-    DateTime now = DateTime.now();
+  void _onNotification(BuildContext context, List<Update>? updates) {
+    DateTime now = this.now();
 
     _notifications.removeWhere((path, notification) {
       return now.difference(notification.last) > Duration(minutes: _settings!.notificationMuteTimeout);
@@ -565,7 +573,7 @@ class BoatInstrumentController {
 
           bool playSound = (u.value['method']??[]).contains('sound');
 
-          notificationStatus.message = u.value['message'];
+          notificationStatus.message = u.value['message']??'"${u.path}" has no message';
           notificationStatus.last = now;
 
           if((newState != notificationStatus.state || notificationStatus.count < newState.count) && !notificationStatus.mute) {            
@@ -657,7 +665,7 @@ class BoatInstrumentController {
     return await http.post(uri, headers: _httpHeaders(headers), body: body);
   }
 
-  _discoverServices() async {
+  Future<void> _discoverServices() async {
     try {
       Uri url = Uri.parse(_settings!.signalkUrl);
       String host = url.host;
@@ -710,7 +718,7 @@ class BoatInstrumentController {
     }
   }
 
-  connect() async {
+  Future<void> connect() async {
     try {
       for(_BoxData bd in _boxData) {
         if(bd.onUpdate != null) {
@@ -764,7 +772,7 @@ class BoatInstrumentController {
   void _subscribe() {
     if(_boxData.length == _boxesOnPage) {
       _paths.clear();
-      _paths.add('navigation.datetime');
+      _paths.add('navigation.datetime'); // Keep alive test.
       _staticPaths.clear();
 
       // Find all the unique paths.
@@ -803,10 +811,11 @@ class BoatInstrumentController {
     _networkTimer = Timer(Duration(milliseconds: _settings!.signalkConnectionTimeout), connect);
   }
 
-  _processData(data) {
+  void _processData(dynamic data) {
     _networkTimeout();
 
-    DateTime now = DateTime.now().toUtc();
+    DateTime now = this.now();
+    Duration dataTimeout = Duration(milliseconds: _settings!.dataTimeout);
 
     dynamic d = json.decode(data);
 
@@ -819,16 +828,22 @@ class BoatInstrumentController {
       for (dynamic u in d['updates']) {
         try {
           String source = u[r'$source'];
+          DateTime timeStamp = DateTime.parse(u['timestamp']);
+          if(_time == null) {
+            _timeSync(timeStamp);
+            now = this.now();
+          }
+
           // Note: the demo server has old date/times.
           if (_settings!.demoMode ||
-              (_settings!.setTime && !_timeSet) ||
               source == 'defaults' ||
               source == 'derived-data' ||
-              now.difference(DateTime.parse(u['timestamp'])) <=
-                  Duration(milliseconds: _settings!.dataTimeout)) {
+              now.difference(timeStamp) <= dataTimeout) {
             for (dynamic v in u['values']) {
               String path = v['path'];
               dynamic value = v['value'];
+
+              _timeSync(timeStamp);
 
               if(_settings!.setTime && !_timeSet && path == 'navigation.datetime') _setTime(value);
 
@@ -841,6 +856,8 @@ class BoatInstrumentController {
                 }
               }
             }
+          } else {
+            l.i('Discarding old data for "$u"');
           }
         } catch (e) {
           l.e("Error converting $u", error: e);
@@ -850,9 +867,10 @@ class BoatInstrumentController {
       for(_BoxData bd in _boxData) {
         if(bd.onUpdate != null) {
           if (bd.updates.isNotEmpty) {
+            // Send updates to Box.
             bd.onUpdate!(bd.updates);
-          } else if (bd.dataTimeout && now.difference(bd.lastUpdate) >
-              Duration(milliseconds: _settings!.dataTimeout)) {
+          } else if (bd.dataTimeout && now.difference(bd.lastUpdate) > dataTimeout) {
+            // We've not seen an update for this Box for a while.
             bd.onUpdate!(null);
             bd.lastUpdate = now;
           }
@@ -861,7 +879,12 @@ class BoatInstrumentController {
     }
   }
 
-  _processStaticData(String path, Uri uri) async {
+  void _timeSync(DateTime timeStamp) {
+    _time = timeStamp;
+    _timeReceived = DateTime.now();
+  }
+
+  Future<void> _processStaticData(String path, Uri uri) async {
     http.Response response = await httpGet(
         uri,
         headers: {
@@ -899,7 +922,7 @@ class BoatInstrumentController {
     }
   }
 
-  _getStaticData(Set<String> staticPaths) {
+  void _getStaticData(Set<String> staticPaths) {
     Uri uri = httpApiUri;
     if(uri.host.isEmpty) return; // We're not connected.
     try {

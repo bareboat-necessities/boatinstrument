@@ -59,7 +59,7 @@ class BatteryVoltMeterBox extends DoubleValueSemiGaugeBox {
   const BatteryVoltMeterBox._init(this._settings, config, title, path, {super.key, super.minValue, super.maxValue, super.ranges, super.step}) :
     super(config, title, GaugeOrientation.up, path);
 
-  factory BatteryVoltMeterBox.fromSettings(config, {key}) {
+  factory BatteryVoltMeterBox.fromSettings(BoxWidgetConfig config, {key}) {
     _ElectricalBatterySettings s = _$ElectricalBatterySettingsFromJson(config.settings);
 
     return BatteryVoltMeterBox._init(s, config, 'Battery:${s.id}', '$batteriesBasePath.${s.id}.voltage',
@@ -162,7 +162,7 @@ class BatteryVoltageBox extends DoubleValueBox {
 
   const BatteryVoltageBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path);
 
-  factory BatteryVoltageBox.fromSettings(config, {key}) {
+  factory BatteryVoltageBox.fromSettings(BoxWidgetConfig config, {key}) {
     _ElectricalSettings s = _$ElectricalSettingsFromJson(config.settings);
 
     return BatteryVoltageBox._init(s, config, 'Voltage:${s.id}', '$batteriesBasePath.${s.id}.voltage', key: key);
@@ -198,7 +198,7 @@ class BatteryCurrentBox extends DoubleValueBox {
 
   const BatteryCurrentBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path, smoothing: false);
 
-  factory BatteryCurrentBox.fromSettings(config, {key}) {
+  factory BatteryCurrentBox.fromSettings(BoxWidgetConfig config, {key}) {
     _ElectricalSettings s = _$ElectricalSettingsFromJson(config.settings);
 
     return BatteryCurrentBox._init(s, config, 'Current:${s.id}', '$batteriesBasePath.${s.id}.current', key: key);
@@ -234,7 +234,7 @@ class BatteryTemperatureBox extends DoubleValueBox {
 
   const BatteryTemperatureBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path, smoothing: false);
 
-  factory BatteryTemperatureBox.fromSettings(config, {key}) {
+  factory BatteryTemperatureBox.fromSettings(BoxWidgetConfig config, {key}) {
     _ElectricalSettings s = _$ElectricalSettingsFromJson(config.settings);
 
     return BatteryTemperatureBox._init(s, config, 'Temp:${s.id}', '$batteriesBasePath.${s.id}.temperature', key: key);
@@ -270,7 +270,7 @@ class InverterCurrentBox extends DoubleValueBox {
 
   const InverterCurrentBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path, smoothing: false);
 
-  factory InverterCurrentBox.fromSettings(config, {key}) {
+  factory InverterCurrentBox.fromSettings(BoxWidgetConfig config, {key}) {
     _ElectricalSettings s = _$ElectricalSettingsFromJson(config.settings);
 
     return InverterCurrentBox._init(s, config, 'Inverter:${s.id}', '$invertersBasePath.${s.id}.dc.current', key: key);
@@ -306,7 +306,7 @@ class SolarVoltageBox extends DoubleValueBox {
 
   const SolarVoltageBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path);
 
-  factory SolarVoltageBox.fromSettings(config, {key}) {
+  factory SolarVoltageBox.fromSettings(BoxWidgetConfig config, {key}) {
     _ElectricalSettings s = _$ElectricalSettingsFromJson(config.settings);
 
     return SolarVoltageBox._init(s, config, 'Solar:${s.id}', '$solarBasePath.${s.id}.voltage', key: key);
@@ -342,7 +342,7 @@ class SolarCurrentBox extends DoubleValueBox {
 
   const SolarCurrentBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path, smoothing: false);
 
-  factory SolarCurrentBox.fromSettings(config, {key}) {
+  factory SolarCurrentBox.fromSettings(BoxWidgetConfig config, {key}) {
     _ElectricalSettings s = _$ElectricalSettingsFromJson(config.settings);
 
     return SolarCurrentBox._init(s, config, 'Solar:${s.id}', '$solarBasePath.${s.id}.current', key: key);
@@ -453,8 +453,8 @@ class _BatteriesBoxState extends State<BatteriesBox> {
       }
     }
 
-    return Column(children: [
-      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: Row(children: [Text('Batteries', style: style)])),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: HeaderText('Batteries', style: style)),
       Padding(padding: const EdgeInsets.all(pad), child: Column(children: l))]);
   }
 
@@ -726,8 +726,8 @@ class _ElectricalSwitchesBoxState extends State<ElectricalSwitchesBox> with Swit
       l.add(lt);
     }
 
-    return Column(children: [
-        Padding(padding: const EdgeInsets.all(pad), child: Row(children: [Text('Switches', style: style)])),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(padding: const EdgeInsets.all(pad), child: HeaderText('Switches', style: style)),
         Expanded(child: ListView(children: l))
       ]);
   }
@@ -952,8 +952,8 @@ class _ElectricalSwitchBoxState extends State<ElectricalSwitchBox> with SwitchCo
             _setSwitchState(value);
       });
 
-    return Column(children: [
-        Padding(padding: const EdgeInsets.all(pad), child: Row(children: [Text('Switch ${_switch.name??_switch.id}', style: style)])),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(padding: const EdgeInsets.all(pad), child: HeaderText('Switch ${_switch.name??_switch.id}', style: style)),
         Center(child: toggleSwitch),
         Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: dimmerList)
       ]);
@@ -1012,12 +1012,13 @@ class _ElectricalSwitchBoxState extends State<ElectricalSwitchBox> with SwitchCo
 class Power {
   double voltage = 0;
   double current = 0;
-  DateTime timestamp = DateTime.now();
+  DateTime timestamp;
+  Power(this.timestamp);
 }
 
 abstract class PowerGraphBackground extends BackgroundData {
 
-  PowerGraphBackground(sid, String basePath, {controller}) : super(controller: controller, sid, {'$basePath.*.voltage', '$basePath.*.current'});
+  PowerGraphBackground(String sid, String basePath, {controller}) : super(controller: controller, sid, {'$basePath.*.voltage', '$basePath.*.current'});
 
   Map<String, Power> get power;
 
@@ -1026,13 +1027,13 @@ abstract class PowerGraphBackground extends BackgroundData {
     if(updates == null) {
       power.clear();
     } else {
-      DateTime now = DateTime.now();
+      DateTime now = controller!.now();
 
       for (Update u in updates) {
         try {
           List<String> ps = u.path.split('.');
           String id = ps[2];
-          Power p = power.putIfAbsent(id, () => Power());
+          Power p = power.putIfAbsent(id, () => Power(now));
           p.timestamp = now;
 
           switch (ps[3]) {
@@ -1069,7 +1070,7 @@ abstract class PowerGraphBackground extends BackgroundData {
 class BatteryPowerGraphBackground extends PowerGraphBackground {
   static final Map<String, Power> _power = {};
 
-  BatteryPowerGraphBackground({controller}) : super(controller: controller, BatteryPowerGraph.sid, batteriesBasePath);
+  BatteryPowerGraphBackground({BoatInstrumentController? controller}) : super(controller: controller, BatteryPowerGraph.sid, batteriesBasePath);
 
   @override
   Map<String, Power> get power => _power;
@@ -1096,7 +1097,7 @@ class BatteryPowerGraph extends GraphBox {
 class SolarPowerGraphBackground extends PowerGraphBackground {
   static final Map<String, Power> _power = {};
 
-  SolarPowerGraphBackground({controller}) : super(controller: controller, SolarPowerGraph.sid, solarBasePath);
+  SolarPowerGraphBackground({BoatInstrumentController? controller}) : super(controller: controller, SolarPowerGraph.sid, solarBasePath);
 
   @override
   Map<String, Power> get power => _power;

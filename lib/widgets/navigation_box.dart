@@ -14,7 +14,7 @@ class CrossTrackErrorBox extends DoubleValueBox {
   @override
   String get id => sid;
 
-  const CrossTrackErrorBox(config, {super.key}) : super(config, 'XTE', 'navigation.*.crossTrackError', precision: 2, smoothing: false, portStarboard: true);
+  const CrossTrackErrorBox(BoxWidgetConfig config, {super.key}) : super(config, 'XTE', 'navigation.*.crossTrackError', precision: 2, smoothing: false, portStarboard: true);
 
   @override
   double convert(double value) {
@@ -28,7 +28,7 @@ class CrossTrackErrorBox extends DoubleValueBox {
 }
 
 class CrossTrackErrorGraphBackground extends BackgroundData {
-  CrossTrackErrorGraphBackground({controller}) : super(controller: controller, CrossTrackErrorGraph.sid, {'navigation.*.crossTrackError'});
+  CrossTrackErrorGraphBackground({BoatInstrumentController? controller}) : super(controller: controller, CrossTrackErrorGraph.sid, {'navigation.*.crossTrackError'}, smoothing: false);
 }
 
 class CrossTrackErrorGraph extends GraphBox {
@@ -67,7 +67,7 @@ class CrossTrackErrorDeltaBox extends DoubleValueSemiGaugeBox {
   @override
   String get id => sid;
 
-  const CrossTrackErrorDeltaBox(config, {super.key}) : super(config, 'XTE', GaugeOrientation.up, 'navigation.*.crossTrackError', minValue: -2, maxValue: 2);
+  const CrossTrackErrorDeltaBox(BoxWidgetConfig config, {super.key}) : super(config, 'XTE', GaugeOrientation.up, 'navigation.*.crossTrackError', minValue: -2, maxValue: 2);
 
   @override
   double convert(double value) {
@@ -131,7 +131,7 @@ class CourseOverGroundBox extends DoubleValueBox {
   @override
   String get id => sid;
 
-  const CourseOverGroundBox(config, {super.key}) : super(config, 'COG', 'navigation.courseOverGroundTrue', minLen: 3, precision: 0, angle: true);
+  const CourseOverGroundBox(BoxWidgetConfig config, {super.key}) : super(config, 'COG', 'navigation.courseOverGroundTrue', minLen: 3, precision: 0, angle: true);
 
   @override
   double convert(double value) {
@@ -149,7 +149,7 @@ class SpeedOverGroundBox extends SpeedBox {
   @override
   String get id => sid;
 
-  const SpeedOverGroundBox(config, {super.valueToDisplay, super.key}) : super(config, 'SOG', 'navigation.speedOverGround');
+  const SpeedOverGroundBox(BoxWidgetConfig config, {super.valueToDisplay, super.key}) : super(config, 'SOG', 'navigation.speedOverGround');
 }
 
 class MaxSpeedOverGroundBox extends SpeedOverGroundBox {
@@ -161,7 +161,7 @@ class MaxSpeedOverGroundBox extends SpeedOverGroundBox {
 }
 
 class SpeedOverGroundGraphBackground extends BackgroundData {
-  SpeedOverGroundGraphBackground({controller}) : super(controller: controller, SpeedOverGroundGraph.sid, {'navigation.speedOverGround'});
+  SpeedOverGroundGraphBackground({BoatInstrumentController? controller}) : super(controller: controller, SpeedOverGroundGraph.sid, {'navigation.speedOverGround'});
 }
 
 class SpeedOverGroundGraph extends GraphBox {
@@ -182,12 +182,30 @@ class SpeedOverGroundGraph extends GraphBox {
   }
 }
 
-class HeadingBox extends DoubleValueBox {
+class HeadingTrueBox extends DoubleValueBox {
   static const String sid = 'navigation-heading-true';
   @override
   String get id => sid;
 
-  const HeadingBox(config, {super.key}) : super(config, 'HDG', 'navigation.headingTrue', minLen: 3, precision: 0, angle: true);
+  const HeadingTrueBox(BoxWidgetConfig config, {super.key}) : super(config, 'HDG', 'navigation.headingTrue', minLen: 3, precision: 0, angle: true);
+
+  @override
+  double convert(double value) {
+    return rad2Deg(value) * 1.0;
+  }
+
+  @override
+  String units(double value) {
+    return degreesUnits;
+  }
+}
+
+class HeadingMagneticBox extends DoubleValueBox {
+  static const String sid = 'navigation-heading-magnetic';
+  @override
+  String get id => sid;
+
+  const HeadingMagneticBox(BoxWidgetConfig config, {super.key}) : super(config, 'MHDG', 'navigation.headingMagnetic', minLen: 3, precision: 0, angle: true);
 
   @override
   double convert(double value) {
@@ -205,7 +223,7 @@ class NextPointDistanceBox extends DoubleValueBox {
   @override
   String get id => sid;
 
-  const NextPointDistanceBox(config, {super.key}) : super(config, 'WPT Dist', 'navigation.*.nextPoint.distance', precision: 2);
+  const NextPointDistanceBox(BoxWidgetConfig config, {super.key}) : super(config, 'WPT Dist', 'navigation.*.nextPoint.distance', precision: 2, smoothing: false);
 
   @override
   double convert(double value) {
@@ -218,12 +236,30 @@ class NextPointDistanceBox extends DoubleValueBox {
   }
 }
 
+class NextPointBearingBox extends DoubleValueBox {
+  static const String sid = 'navigation-next-point-bearing';
+  @override
+  String get id => sid;
+
+  const NextPointBearingBox(BoxWidgetConfig config, {super.key}) : super(config, 'WPT BRG', 'navigation.*.nextPoint.bearingTrue', minLen: 3, precision: 0, angle: true);
+
+  @override
+  double convert(double value) {
+    return rad2Deg(value) * 1.0;
+  }
+
+  @override
+  String units(double value) {
+    return degreesUnits;
+  }
+}
+
 class NextPointVelocityMadeGoodBox extends SpeedBox {
   static const String sid = 'navigation-next-point-velocity-made-good';
   @override
   String get id => sid;
 
-  const NextPointVelocityMadeGoodBox(config, {super.key}) : super(config, 'WPT VMG', 'navigation.*.nextPoint.velocityMadeGood');
+  const NextPointVelocityMadeGoodBox(BoxWidgetConfig config, {super.key}) : super(config, 'WPT VMG', 'navigation.*.nextPoint.velocityMadeGood');
 }
 
 abstract class TimeToGoBox extends BoxWidget {
@@ -236,7 +272,7 @@ abstract class TimeToGoBox extends BoxWidget {
   State<TimeToGoBox> createState() => TimeToGoBoxState();
 }
 
-class TimeToGoBoxState<T extends TimeToGoBox> extends State<T> {
+class TimeToGoBoxState<T extends TimeToGoBox> extends HeadedBoxState<T> {
   int? _timeToGo;
 
   @override
@@ -247,14 +283,11 @@ class TimeToGoBoxState<T extends TimeToGoBox> extends State<T> {
 
   @override
   Widget build(BuildContext context) {
-    TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
-    const double pad = 5.0;
-
     if(widget.config.editMode) {
       _timeToGo = 123;
     }
 
-    String ttgString = '-';
+    text = '-';
     String etaString = '';
 
     if(_timeToGo != null) {
@@ -263,14 +296,14 @@ class TimeToGoBoxState<T extends TimeToGoBox> extends State<T> {
       int hours = int.parse(parts[0]);
       int days = hours~/24;
       if(days > 0) {
-        ttgString = '${days}d${hours%24}h';
+        text = '${days}d${hours%24}h';
       } else if(hours > 0) {
-        ttgString = '${hours}h${parts[1]}m';
+        text = '${hours}h${parts[1]}m';
       } else {
-        ttgString = '${parts[1]}m${parts[2]}s';
+        text = '${parts[1]}m${parts[2]}s';
       }
 
-      DateTime now = DateTime.now();
+      DateTime now = widget.config.controller.now().toLocal();
       DateTime eta = now.add(ttg);
       String fmt = '';
       if(eta.year != now.year) {
@@ -278,22 +311,15 @@ class TimeToGoBoxState<T extends TimeToGoBox> extends State<T> {
       } else if(eta.month != now.month || eta.day != now.day) {
         fmt = 'MMM-dd ';
       }
-      etaString = DateFormat('${fmt}HH:mm').format(DateTime.now().add(ttg));
+      etaString = DateFormat('${fmt}HH:mm').format(now.add(ttg));
     }
 
-    double fontSize = maxFontSize(ttgString, style,
-        widget.config.constraints.maxHeight - style.fontSize! - (3 * pad),
-        widget.config.constraints.maxWidth - (2 * pad));
+    header = '${widget._title} TTG $etaString';
 
-    return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Row(children: [Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: Text('${widget._title} TTG $etaString', style: style))]),
-      // We need to disable the device text scaling as this interferes with our text scaling.
-      Expanded(child: Center(child: Padding(padding: const EdgeInsets.all(pad), child: Text(ttgString, textScaler: TextScaler.noScaling,  style: style.copyWith(fontSize: fontSize)))))
-
-    ]);
+    return super.build(context);
   }
 
-  processData(List<Update>? updates) {
+  void processData(List<Update>? updates) {
     if(updates == null) {
       _timeToGo = null;
     } else {
@@ -310,9 +336,9 @@ class TimeToGoBoxState<T extends TimeToGoBox> extends State<T> {
   }
 }
 
-class WaypointTimeToGoBox extends TimeToGoBox {
+class NextPointTimeToGoBox extends TimeToGoBox {
 
-  WaypointTimeToGoBox(config, {super.key}) : super(config, 'WPT', {'navigation.*.nextPoint.timeToGo'});
+  NextPointTimeToGoBox(BoxWidgetConfig config, {super.key}) : super(config, 'WPT', {'navigation.*.nextPoint.timeToGo'});
 
   static String sid = 'navigation-next-point-time-to-go';
   @override
@@ -416,7 +442,7 @@ class PositionBox extends BoxWidget {
   Widget? getSettingsHelp() => const HelpTextWidget('For a full list of formats see https://pub.dev/packages/latlong_formatter');
 }
 
-class _PositionBoxState extends State<PositionBox> {
+class _PositionBoxState extends HeadedBoxState<PositionBox> {
   _PositionSettings _settings = _PositionSettings();
   LatLongFormatter _llf = LatLongFormatter('');
   double? _latitude;
@@ -432,29 +458,19 @@ class _PositionBoxState extends State<PositionBox> {
 
   @override
   Widget build(BuildContext context) {
-    TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
-    const double pad = 5.0;
-
     if(widget.config.editMode) {
       _latitude = _longitude = 0;
     }
-    String text = (_latitude == null || _longitude == null) ?
+
+    text = (_latitude == null || _longitude == null) ?
     '--- --.--- -\n--- --.--- -' :
     _llf.format(LatLong(_latitude!, _longitude!));
 
-    double fontSize = maxFontSize(text, style,
-        (widget.config.constraints.maxHeight - style.fontSize! - (3 * pad)) / 2,
-        widget.config.constraints.maxWidth - (2 * pad));
-
-    return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Row(children: [Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: Text('Position', style: style))]),
-      // We need to disable the device text scaling as this interferes with our text scaling.
-      Expanded(child: Center(child: Padding(padding: const EdgeInsets.all(pad), child: Text(text, textScaler: TextScaler.noScaling,  style: style.copyWith(fontSize: fontSize)))))
-
-    ]);
+    header = 'Position';
+    return super.build(context);
   }
 
-  _processData(List<Update>? updates) {
+  void _processData(List<Update>? updates) {
     if(updates == null) {
       _latitude = _longitude = null;
     } else {
@@ -516,7 +532,7 @@ class MagneticVariationBox extends DoubleValueBox {
   @override
   String get id => sid;
 
-  const MagneticVariationBox(config, {super.key}) : super(config, 'Mag Var', 'navigation.magneticVariation', precision: 0, smoothing: false);
+  const MagneticVariationBox(BoxWidgetConfig config, {super.key}) : super(config, 'Mag Var', 'navigation.magneticVariation', precision: 0, smoothing: false);
 
   @override
   double convert(double value) {
@@ -534,7 +550,7 @@ class RateOfTurnBox extends DoubleValueBox {
   @override
   String get id => sid;
 
-  const RateOfTurnBox(config, {super.key}) : super(config, 'Turn Rate', 'navigation.rateOfTurn', precision: 0, portStarboard: true);
+  const RateOfTurnBox(BoxWidgetConfig config, {super.key}) : super(config, 'Turn Rate', 'navigation.rateOfTurn', precision: 0, portStarboard: true);
 
   @override
   double convert(double value) {

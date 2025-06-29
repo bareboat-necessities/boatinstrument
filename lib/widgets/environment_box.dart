@@ -30,7 +30,7 @@ class DepthBelowSurfaceBox extends DepthBox {
   @override
   String get id => sid;
 
-  const DepthBelowSurfaceBox(config, {super.valueToDisplay, super.key}) : super(config, 'Depth', 'environment.depth.belowSurface');
+  const DepthBelowSurfaceBox(BoxWidgetConfig config, {super.valueToDisplay, super.key}) : super(config, 'Depth', 'environment.depth.belowSurface');
 }
 
 class MinDepthBelowSurfaceBox extends DepthBelowSurfaceBox {
@@ -42,7 +42,7 @@ class MinDepthBelowSurfaceBox extends DepthBelowSurfaceBox {
 }
 
 class DepthBelowSurfaceGraphBackground extends BackgroundData {
-  DepthBelowSurfaceGraphBackground({controller}) : super(controller: controller, DepthBelowSurfaceGraph.sid, {'environment.depth.belowSurface'}, smoothing: false);
+  DepthBelowSurfaceGraphBackground({BoatInstrumentController? controller}) : super(controller: controller, DepthBelowSurfaceGraph.sid, {'environment.depth.belowSurface'}, smoothing: false);
 }
 
 class DepthBelowSurfaceGraph extends GraphBox {
@@ -68,7 +68,7 @@ class DepthBelowKeelBox extends DepthBox {
   @override
   String get id => sid;
 
-  const DepthBelowKeelBox(config, {super.valueToDisplay, super.key}) : super(config, 'DBK', 'environment.depth.belowKeel');
+  const DepthBelowKeelBox(BoxWidgetConfig config, {super.valueToDisplay, super.key}) : super(config, 'DBK', 'environment.depth.belowKeel');
 }
 
 class MinDepthBelowKeelBox extends DepthBelowKeelBox {
@@ -80,7 +80,7 @@ class MinDepthBelowKeelBox extends DepthBelowKeelBox {
 }
 
 class DepthBelowKeelGraphBackground extends BackgroundData {
-  DepthBelowKeelGraphBackground({controller}) : super(controller: controller, DepthBelowKeelGraph.sid, {'environment.depth.belowKeel'}, smoothing: false);
+  DepthBelowKeelGraphBackground({BoatInstrumentController? controller}) : super(controller: controller, DepthBelowKeelGraph.sid, {'environment.depth.belowKeel'}, smoothing: false);
 }
 
 class DepthBelowKeelGraph extends GraphBox {
@@ -108,7 +108,7 @@ class DepthBelowTransducerBox extends DepthBox {
   @override
   String get id => sid;
 
-  const DepthBelowTransducerBox(config, {super.valueToDisplay, super.key}) : super(config, 'DBT', 'environment.depth.belowTransducer');
+  const DepthBelowTransducerBox(BoxWidgetConfig config, {super.valueToDisplay, super.key}) : super(config, 'DBT', 'environment.depth.belowTransducer');
 }
 
 class MinDepthBelowTransducerBox extends DepthBelowTransducerBox {
@@ -120,7 +120,7 @@ class MinDepthBelowTransducerBox extends DepthBelowTransducerBox {
 }
 
 class DepthBelowTransducerGraphBackground extends BackgroundData {
-  DepthBelowTransducerGraphBackground({controller}) : super(controller: controller, DepthBelowTransducerGraph.sid, {'environment.depth.belowTransducer'}, smoothing: false);
+  DepthBelowTransducerGraphBackground({BoatInstrumentController? controller}) : super(controller: controller, DepthBelowTransducerGraph.sid, {'environment.depth.belowTransducer'}, smoothing: false);
 }
 
 class DepthBelowTransducerGraph extends GraphBox {
@@ -145,7 +145,7 @@ class WaterTemperatureBox extends DoubleValueBox {
   @override
   String get id => sid;
 
-  const WaterTemperatureBox(config, {super.key}) : super(config, 'Water Temp', 'environment.water.temperature');
+  const WaterTemperatureBox(BoxWidgetConfig config, {super.key}) : super(config, 'Water Temp', 'environment.water.temperature');
 
   @override
   double convert(double value) {
@@ -159,7 +159,7 @@ class WaterTemperatureBox extends DoubleValueBox {
 }
 
 class WaterTemperatureGraphBackground extends BackgroundData {
-  WaterTemperatureGraphBackground({controller}) : super(controller: controller, WaterTemperatureGraph.sid, {'environment.water.temperature'});
+  WaterTemperatureGraphBackground({BoatInstrumentController? controller}) : super(controller: controller, WaterTemperatureGraph.sid, {'environment.water.temperature'});
 }
 
 class WaterTemperatureGraph extends GraphBox {
@@ -185,7 +185,7 @@ class OutsideHumidityBox extends DoubleValueBox {
   @override
   String get id => sid;
 
-  const OutsideHumidityBox(config, {super.key}) : super(config, 'Humidity Out', 'environment.outside.relativeHumidity', precision: 0);
+  const OutsideHumidityBox(BoxWidgetConfig config, {super.key}) : super(config, 'Humidity Out', 'environment.outside.relativeHumidity', precision: 0);
 
   @override
   double convert(double value) {
@@ -203,7 +203,7 @@ class InsideHumidityBox extends DoubleValueBox {
   @override
   String get id => sid;
 
-  const InsideHumidityBox(config, {super.key}) : super(config, 'Humidity In', 'environment.inside.relativeHumidity', precision: 0);
+  const InsideHumidityBox(BoxWidgetConfig config, {super.key}) : super(config, 'Humidity In', 'environment.inside.relativeHumidity', precision: 0);
 
   @override
   double convert(double value) {
@@ -257,14 +257,14 @@ class _SetAndDriftBoxState extends State<SetAndDriftBox> {
         (widget.config.constraints.maxHeight - style.fontSize! - (3 * pad)) / 2,
         widget.config.constraints.maxWidth - (2 * pad));
 
-    return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Row(children: [Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: Text('Set&Drift deg-${widget.config.controller.speedUnits.unit}', style: style))]),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: HeaderText('Set&Drift deg-${widget.config.controller.speedUnits.unit}', style: style)),
       // We need to disable the device text scaling as this interferes with our text scaling.
       Expanded(child: Center(child: Padding(padding: const EdgeInsets.all(pad), child: Text(text, textScaler: TextScaler.noScaling,  style: style.copyWith(fontSize: fontSize)))))
     ]);
   }
 
-  _processData(List<Update>? updates) {
+  void _processData(List<Update>? updates) {
     if(updates == null) {
       _set = _drift = _displayDrift = null;
     } else {
@@ -293,7 +293,7 @@ class OutsideTemperatureBox extends DoubleValueBox {
   @override
   String get id => sid;
 
-  const OutsideTemperatureBox(config, {super.key}) : super(config, 'Outside Temp', 'environment.outside.temperature');
+  const OutsideTemperatureBox(BoxWidgetConfig config, {super.key}) : super(config, 'Outside Temp', 'environment.outside.temperature');
 
   @override
   double convert(double value) {
@@ -307,7 +307,7 @@ class OutsideTemperatureBox extends DoubleValueBox {
 }
 
 class OutsideTemperatureGraphBackground extends BackgroundData {
-  OutsideTemperatureGraphBackground({controller}) : super(controller: controller, OutsideTemperatureGraph.sid, {'environment.outside.temperature'});
+  OutsideTemperatureGraphBackground({BoatInstrumentController? controller}) : super(controller: controller, OutsideTemperatureGraph.sid, {'environment.outside.temperature'});
 }
 
 class OutsideTemperatureGraph extends GraphBox {
@@ -333,7 +333,7 @@ class OutsidePressureBox extends DoubleValueBox {
   @override
   String get id => sid;
 
-  const OutsidePressureBox(config, {super.key}) : super(config, 'Pressure', 'environment.outside.pressure');
+  const OutsidePressureBox(BoxWidgetConfig config, {super.key}) : super(config, 'Pressure', 'environment.outside.pressure');
 
   @override
   double convert(double value) {
@@ -441,7 +441,7 @@ class _SunlightBox extends State<SunlightBox> {
   @override
   Widget build(BuildContext context) {
     final fmt = DateFormat(widget._settings.timeFormat);
-    final now = DateTime.now().toLocal();
+    final now = widget.config.controller.now().toLocal();
 
     TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
     const double pad = 5.0;
@@ -469,8 +469,8 @@ class _SunlightBox extends State<SunlightBox> {
         timeWidgets.add(Text('${t.name} ${fmt.format(t.time)}', textScaler: TextScaler.noScaling,  style: style.copyWith(fontSize: fontSize, decoration: d)));
       }
     }
-    return Column(mainAxisAlignment: MainAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: Row(children: [Text('Sunlight', style: style)])),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: HeaderText('Sunlight', style: style)),
       Padding(padding: const EdgeInsets.all(pad), child: Column(children: timeWidgets))]);
   }
 
@@ -587,7 +587,7 @@ class MoonBox extends CelestialBox {
   State<MoonBox> createState() => _MoonBox();
 }
 
-class _MoonBox extends State<MoonBox> {
+class _MoonBox extends HeadedBoxState<MoonBox> {
 
   DateTime? _rise, _set;
   double? _fraction;
@@ -595,6 +595,7 @@ class _MoonBox extends State<MoonBox> {
 
   @override
   void initState() {
+    alignment = Alignment.topCenter;
     super.initState();
     widget.config.controller.configure(onUpdate: _onUpdate, paths: {'environment.moon.*'}, dataTimeout: false);
   }
@@ -603,38 +604,28 @@ class _MoonBox extends State<MoonBox> {
   Widget build(BuildContext context) {
     final fmt = DateFormat(widget._settings.timeFormat);
 
-    TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
-    const double pad = 5.0;
-
     if(widget.config.editMode) {
-      _rise = _set = DateTime.now();
+      _rise = _set = widget.config.controller.now().toLocal();
       _fraction = 1.0;
       _phaseName = 'Full';
     }
 
-    String text =
+    header = 'Moon';
+
+    text =
 '''Rise:  ${(_rise == null) ? '-' : fmt.format(_rise!)}
 Set:   ${(_set == null) ? '-' : fmt.format(_set!)}
 Phase: ${(_fraction == null) ? '-' : (_fraction!*100).toInt()}%
 ${(_phaseName == null) ? '-' : _phaseName}''';
 
-    double fontSize = maxFontSize(text, style,
-        (widget.config.constraints.maxHeight - style.fontSize! - (3 * pad)) / 4,
-        widget.config.constraints.maxWidth - (2 * pad));
+    lines = 4;
 
-    List<Widget> stack = [];
-    if(widget._perBoxSettings.showMoon) {
-      stack.add(Padding(padding: const EdgeInsets.all(pad), child: RepaintBoundary(child: CustomPaint(size: Size.infinite,
-          painter: _MoonPainter(_fraction??0)))));
-    }
-
-    stack.add(Column(mainAxisAlignment: MainAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: Row(children: [Text('Moon', style: style)])),
-      // We need to disable the device text scaling as this interferes with our text scaling.
-      Padding(padding: const EdgeInsets.all(pad), child: Row(children: [Text(text, textScaler: TextScaler.noScaling,  style: style.copyWith(fontSize: fontSize))])),
-    ]));
-
-    return Stack(children: stack);
+    return Stack(children: [
+      if(widget._perBoxSettings.showMoon)
+        Padding(padding: const EdgeInsets.all(HeadedBoxState.pad), child: RepaintBoundary(child: CustomPaint(size: Size.infinite,
+          painter: _MoonPainter(_fraction??0)))),
+      super.build(context)
+    ]);
   }
 
   void _onUpdate(List<Update>? updates) {
@@ -702,7 +693,7 @@ class _MoonPerBoxSettingsState extends State<_MoonPerBoxSettingsWidget> {
 }
 
 class OutsidePressureGraphBackground extends BackgroundData {
-  OutsidePressureGraphBackground({controller}) : super(controller: controller, OutsidePressureGraph.sid, {'environment.outside.pressure'});
+  OutsidePressureGraphBackground({BoatInstrumentController? controller}) : super(controller: controller, OutsidePressureGraph.sid, {'environment.outside.pressure'});
 }
 
 class OutsidePressureGraph extends GraphBox {

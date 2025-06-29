@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:boatinstrument/path_text_formatter.dart';
 import 'package:boatinstrument/widgets/double_value_box.dart';
 import 'package:boatinstrument/widgets/gauge_box.dart';
+import 'package:color_hex/color_hex.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_material_color_picker/flutter_material_color_picker.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
@@ -29,6 +31,11 @@ class _CustomSettings {
   bool portStarboard;
   bool dataTimeout;
   DoubleValueToDisplay valueToDisplay;
+  @JsonKey(
+      name: 'color',
+      fromJson: _string2Color,
+      toJson: _color2String)
+  Color color;
 
   _CustomSettings({
     this.title = 'title',
@@ -44,8 +51,15 @@ class _CustomSettings {
     this.step = 1,
     this.portStarboard = false,
     this.dataTimeout = true,
-    this.valueToDisplay = DoubleValueToDisplay.value
+    this.valueToDisplay = DoubleValueToDisplay.value,
+    this.color = Colors.blue
   });
+
+  static Color _string2Color(String inColor) =>
+      inColor.convertToColor;
+
+  static String _color2String(Color color) =>
+      color.convertToHex.hex??'#2196f3';// Colors.blue
 }
 
 class CustomDoubleValueBox extends DoubleValueBox {
@@ -55,7 +69,7 @@ class CustomDoubleValueBox extends DoubleValueBox {
 
   const CustomDoubleValueBox._init(this._settings, this._unitsString, this._multiplier, super.config, super.title, super.path, {super.precision, super.minLen, super.minValue, super.maxValue, super.angle, super.smoothing, super.portStarboard, super.dataTimeout, super.valueToDisplay, super.key});
 
-  factory CustomDoubleValueBox.fromSettings(config, {key}) {
+  factory CustomDoubleValueBox.fromSettings(BoxWidgetConfig config, {key}) {
     _CustomSettings s = _$CustomSettingsFromJson(config.settings);
     return CustomDoubleValueBox._init(s, s.units, s.multiplier, config, s.title, s.path, precision: s.precision, minLen: s.minLen, minValue: s.minValue, maxValue: s.maxValue, angle: s.angle, smoothing: s.smoothing, portStarboard: s.portStarboard, dataTimeout: s.dataTimeout, valueToDisplay: s.valueToDisplay, key: key);
   }
@@ -70,7 +84,7 @@ class CustomDoubleValueBox extends DoubleValueBox {
 
   @override
   BoxSettingsWidget getPerBoxSettingsWidget() {
-    return _SettingsWidget(config, _settings);
+    return _SettingsWidget(config, this, _settings);
   }
 
   @override
@@ -96,7 +110,7 @@ class CustomDoubleValueSemiGaugeBox extends DoubleValueSemiGaugeBox {
 
   const CustomDoubleValueSemiGaugeBox._init(this._settings, this._unitsString, this._multiplier, super.config, super.title, super.orientation, super.path, {super.minValue, super.maxValue, super.step, super.angle, super.smoothing, super.dataTimeout, super.key});
 
-  factory CustomDoubleValueSemiGaugeBox.fromSettings(config, {key}) {
+  factory CustomDoubleValueSemiGaugeBox.fromSettings(BoxWidgetConfig config, {key}) {
     _CustomSettings s = _$CustomSettingsFromJson(config.settings);
     return CustomDoubleValueSemiGaugeBox._init(s, s.units, s.multiplier, config, s.title, GaugeOrientation.up, s.path, minValue: s.minValue, maxValue: s.maxValue, step: s.step, angle: s.angle, smoothing: s.smoothing, dataTimeout: s.dataTimeout, key: key);
   }
@@ -110,7 +124,7 @@ class CustomDoubleValueSemiGaugeBox extends DoubleValueSemiGaugeBox {
 
   @override
   BoxSettingsWidget getPerBoxSettingsWidget() {
-    return _SettingsWidget(config, _settings);
+    return _SettingsWidget(config, this, _settings);
   }
 
   @override
@@ -131,7 +145,7 @@ class CustomDoubleValueCircularGaugeBox extends DoubleValueCircularGaugeBox {
 
   const CustomDoubleValueCircularGaugeBox._init(this._settings, this._unitsString, this._multiplier, super.config, super.title, super.path, {super.minValue, super.maxValue, required super.step, super.smoothing, super.dataTimeout, super.key});
 
-  factory CustomDoubleValueCircularGaugeBox.fromSettings(config, {key}) {
+  factory CustomDoubleValueCircularGaugeBox.fromSettings(BoxWidgetConfig config, {key}) {
     _CustomSettings s = _$CustomSettingsFromJson(config.settings);
     return CustomDoubleValueCircularGaugeBox._init(s, s.units, s.multiplier, config, s.title, s.path, minValue: s.minValue, maxValue: s.maxValue, step: s.step, smoothing: s.smoothing, dataTimeout: s.dataTimeout, key: key);
   }
@@ -145,7 +159,7 @@ class CustomDoubleValueCircularGaugeBox extends DoubleValueCircularGaugeBox {
 
   @override
   BoxSettingsWidget getPerBoxSettingsWidget() {
-    return _SettingsWidget(config, _settings);
+    return _SettingsWidget(config, this, _settings);
   }
 
   @override
@@ -164,11 +178,11 @@ class CustomDoubleValueBarGaugeBox extends DoubleValueBarGaugeBox {
   final String _unitsString;
   final double _multiplier;
 
-  const CustomDoubleValueBarGaugeBox._init(this._settings, this._unitsString, this._multiplier, super.config, super.title, super.path, {super.minValue, super.maxValue, required super.step, super.smoothing, super.dataTimeout, super.key});
+  const CustomDoubleValueBarGaugeBox._init(this._settings, this._unitsString, this._multiplier, super.config, super.title, super.path, {super.minValue, super.maxValue, required super.step, super.smoothing, super.dataTimeout, super.barColor, super.key});
 
-  factory CustomDoubleValueBarGaugeBox.fromSettings(config, {key}) {
+  factory CustomDoubleValueBarGaugeBox.fromSettings(BoxWidgetConfig config, {key}) {
     _CustomSettings s = _$CustomSettingsFromJson(config.settings);
-    return CustomDoubleValueBarGaugeBox._init(s, s.units, s.multiplier, config, s.title, s.path, minValue: s.minValue, maxValue: s.maxValue, step: s.step, smoothing: s.smoothing, dataTimeout: s.dataTimeout, key: key);
+    return CustomDoubleValueBarGaugeBox._init(s, s.units, s.multiplier, config, s.title, s.path, minValue: s.minValue, maxValue: s.maxValue, step: s.step, smoothing: s.smoothing, dataTimeout: s.dataTimeout, barColor: s.color, key: key);
   }
 
   static String sid = 'custom-gauge-bar';
@@ -180,7 +194,7 @@ class CustomDoubleValueBarGaugeBox extends DoubleValueBarGaugeBox {
 
   @override
   BoxSettingsWidget getPerBoxSettingsWidget() {
-    return _SettingsWidget(config, _settings);
+    return _SettingsWidget(config, this, _settings);
   }
 
   @override
@@ -196,9 +210,10 @@ class CustomDoubleValueBarGaugeBox extends DoubleValueBarGaugeBox {
 
 class _SettingsWidget extends BoxSettingsWidget {
   final BoxWidgetConfig _config;
+  final DoubleValueBox _gaugeBox;
   final _CustomSettings _settings;
 
-  const _SettingsWidget(this._config, this._settings);
+  const _SettingsWidget(this._config, this._gaugeBox, this._settings);
 
   @override
   Map<String, dynamic> getSettingsJson() {
@@ -213,6 +228,7 @@ class _SettingsState extends State<_SettingsWidget> {
 
   @override
   Widget build(BuildContext context) {
+    DoubleValueBox b = widget._gaugeBox;
     _CustomSettings s = widget._settings;
 
     return ListView(children: [
@@ -248,22 +264,24 @@ class _SettingsState extends State<_SettingsWidget> {
             initialValue: s.multiplier.toString(),
             onChanged: (value) => s.multiplier = double.tryParse(value)??1),
       ),
-      ListTile(
-        leading: const Text("Precision:"),
-        title: TextFormField(
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            initialValue: s.precision.toString(),
-            onChanged: (value) => s.precision = int.tryParse(value)??0),
-      ),
-      ListTile(
-        leading: const Text("Min Length:"),
-        title: TextFormField(
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            initialValue: s.minLen.toString(),
-            onChanged: (value) => s.minLen = int.tryParse(value)??0),
-      ),
+      if({CustomDoubleValueBox}.contains(b.runtimeType))
+        ListTile(
+          leading: const Text("Precision:"),
+          title: TextFormField(
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              initialValue: s.precision.toString(),
+              onChanged: (value) => s.precision = int.tryParse(value)??0),
+        ),
+      if({CustomDoubleValueBox}.contains(b.runtimeType))
+        ListTile(
+          leading: const Text("Min Length:"),
+          title: TextFormField(
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              initialValue: s.minLen.toString(),
+              onChanged: (value) => s.minLen = int.tryParse(value)??0),
+        ),
       ListTile(
         leading: const Text("Min Value:"),
         title: TextFormField(
@@ -276,23 +294,26 @@ class _SettingsState extends State<_SettingsWidget> {
             initialValue: (s.maxValue??'').toString(),
             onChanged: (value) => s.maxValue = double.tryParse(value)),
       ),
-      ListTile(
-        leading: const Text("Step:"),
-        title: TextFormField(
-            initialValue: s.step.toString(),
-            onChanged: (value) => s.step = double.tryParse(value)??1),
-      ),
-      ListTile(
-          leading: const Text("Value to Display:"),
-          title: EnumDropdownMenu(DoubleValueToDisplay.values, s.valueToDisplay, (v) {s.valueToDisplay = v!;})
-      ),
-      SwitchListTile(title: const Text("Is Angle:"),
-          value: s.angle,
-          onChanged: (bool value) {
-            setState(() {
-              s.angle = value;
-            });
-          }),
+      if({CustomDoubleValueSemiGaugeBox, CustomDoubleValueCircularGaugeBox, CustomDoubleValueBarGaugeBox}.contains(b.runtimeType))
+        ListTile(
+          leading: const Text("Step:"),
+          title: TextFormField(
+              initialValue: s.step.toString(),
+              onChanged: (value) => s.step = double.tryParse(value)??1),
+        ),
+      if({CustomDoubleValueBox}.contains(b.runtimeType))
+        ListTile(
+            leading: const Text("Value to Display:"),
+            title: EnumDropdownMenu(DoubleValueToDisplay.values, s.valueToDisplay, (v) {s.valueToDisplay = v!;})
+        ),
+      if({CustomDoubleValueBox, CustomDoubleValueSemiGaugeBox}.contains(b.runtimeType))
+        SwitchListTile(title: const Text("Is Angle:"),
+            value: s.angle,
+            onChanged: (bool value) {
+              setState(() {
+                s.angle = value;
+              });
+            }),
       SwitchListTile(title: const Text("Smoothing:"),
           value: s.smoothing,
           onChanged: (bool value) {
@@ -300,13 +321,14 @@ class _SettingsState extends State<_SettingsWidget> {
               s.smoothing = value;
             });
           }),
-      SwitchListTile(title: const Text("Port/Starboard:"),
-          value: s.portStarboard,
-          onChanged: (bool value) {
-            setState(() {
-              s.portStarboard = value;
-            });
-          }),
+      if({CustomDoubleValueBox}.contains(b.runtimeType))
+        SwitchListTile(title: const Text("Port/Starboard:"),
+            value: s.portStarboard,
+            onChanged: (bool value) {
+              setState(() {
+                s.portStarboard = value;
+              });
+            }),
       SwitchListTile(title: const Text("Data Timeout:"),
           value: s.dataTimeout,
           onChanged: (bool value) {
@@ -314,6 +336,11 @@ class _SettingsState extends State<_SettingsWidget> {
               s.dataTimeout = value;
             });
           }),
+      if({CustomDoubleValueBarGaugeBox}.contains(b.runtimeType))
+        ListTile(
+            leading: const Text("Colour:"),
+            title: MaterialColorPicker(circleSize: 30, spacing: 5, allowShades: false, selectedColor: s.color, onMainColorChange: (ColorSwatch<dynamic>? color) => s.color = color??Colors.blue)
+        ),
     ]);
   }
 
@@ -338,7 +365,7 @@ class _SettingsState extends State<_SettingsWidget> {
       }
       widget._config.controller.l.e('Error Sending Email', error: e);
     } on MissingPluginException {
-      await Share.share(settings, subject: 'Boat Instrument Custom Box Settings');
+      await SharePlus.instance.share(ShareParams(text: settings, subject: 'Boat Instrument Custom Box Settings'));
     } catch (e) {
       widget._config.controller.l.e('Error Sending Email', error: e);
     }

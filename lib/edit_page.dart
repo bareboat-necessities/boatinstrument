@@ -52,10 +52,12 @@ final List<BoxDetails> boxDetails = [
   BoxDetails(CrossTrackErrorBox.sid, (config) {return CrossTrackErrorBox(config, key: UniqueKey());}),
   BoxDetails(WindSpeedTrueBeaufortBox.sid, (config) {return WindSpeedTrueBeaufortBox(config, key: UniqueKey());}),
   BoxDetails(SetAndDriftBox.sid, (config) {return SetAndDriftBox(config, key: UniqueKey());}),
-  BoxDetails(HeadingBox.sid, (config) {return HeadingBox(config, key: UniqueKey());}),
+  BoxDetails(HeadingTrueBox.sid, (config) {return HeadingTrueBox(config, key: UniqueKey());}),
+  BoxDetails(HeadingMagneticBox.sid, (config) {return HeadingMagneticBox(config, key: UniqueKey());}),
   BoxDetails(NextPointDistanceBox.sid, (config) {return NextPointDistanceBox(config, key: UniqueKey());}),
+  BoxDetails(NextPointBearingBox.sid, (config) {return NextPointBearingBox(config, key: UniqueKey());}),
   BoxDetails(NextPointVelocityMadeGoodBox.sid, (config) {return NextPointVelocityMadeGoodBox(config, key: UniqueKey());}),
-  BoxDetails(WaypointTimeToGoBox.sid, (config) {return WaypointTimeToGoBox(config, key: UniqueKey());}),
+  BoxDetails(NextPointTimeToGoBox.sid, (config) {return NextPointTimeToGoBox(config, key: UniqueKey());}),
   // BoxDetails(RouteTimeToGoBox.sid, (config) {return RouteTimeToGoBox(config, key: UniqueKey());}),
   BoxDetails(AttitudeRollGaugeBox.sid, gauge: true, (config) {return AttitudeRollGaugeBox(config, key: UniqueKey());}),
   BoxDetails(CrossTrackErrorDeltaBox.sid, gauge: true, (config) {return CrossTrackErrorDeltaBox(config, key: UniqueKey());}),
@@ -89,26 +91,26 @@ final List<BoxDetails> boxDetails = [
   BoxDetails(RateOfTurnBox.sid, (config) {return RateOfTurnBox(config, key: UniqueKey());}),
   BoxDetails(ElectricalSwitchesBox.sid, experimental: true, (config) {return ElectricalSwitchesBox(config, key: UniqueKey());}),
   BoxDetails(ElectricalSwitchBox.sid, experimental: true, (config) {return ElectricalSwitchBox(config, key: UniqueKey());}),
-  BoxDetails(TrueWindSpeedGraph.sid, graph: true, experimental: true, background: (ctrl) {TrueWindSpeedGraphBackground(controller: ctrl);}, (config) {return TrueWindSpeedGraph(config, key: UniqueKey());}),
-  BoxDetails(ApparentWindSpeedGraph.sid, graph: true, experimental: true, background: (ctrl) {ApparentWindSpeedGraphBackground(controller: ctrl);}, (config) {return ApparentWindSpeedGraph(config, key: UniqueKey());}),
-  BoxDetails(WaterTemperatureGraph.sid, graph: true, experimental: true, background: (ctrl) {WaterTemperatureGraphBackground(controller: ctrl);}, (config) {return WaterTemperatureGraph(config, key: UniqueKey());}),
-  BoxDetails(SpeedThroughWaterGraph.sid, graph: true, experimental: true, background: (ctrl) {SpeedThroughWaterGraphBackground(controller: ctrl);}, (config) {return SpeedThroughWaterGraph(config, key: UniqueKey());}),
-  BoxDetails(SpeedOverGroundGraph.sid, graph: true, experimental: true, background: (ctrl) {SpeedOverGroundGraphBackground(controller: ctrl);}, (config) {return SpeedOverGroundGraph(config, key: UniqueKey());}),
-  BoxDetails(OutsidePressureGraph.sid, graph: true, experimental: true, background: (ctrl) {OutsidePressureGraphBackground(controller: ctrl);}, (config) {return OutsidePressureGraph(config, key: UniqueKey());}),
-  BoxDetails(OutsideTemperatureGraph.sid, graph: true, experimental: true, background: (ctrl) {OutsideTemperatureGraphBackground(controller: ctrl);}, (config) {return OutsideTemperatureGraph(config, key: UniqueKey());}),
+  BoxDetails(TrueWindSpeedGraph.sid, graph: true, background: (ctrl) {TrueWindSpeedGraphBackground(controller: ctrl);}, (config) {return TrueWindSpeedGraph(config, key: UniqueKey());}),
+  BoxDetails(ApparentWindSpeedGraph.sid, graph: true, background: (ctrl) {ApparentWindSpeedGraphBackground(controller: ctrl);}, (config) {return ApparentWindSpeedGraph(config, key: UniqueKey());}),
+  BoxDetails(WaterTemperatureGraph.sid, graph: true, background: (ctrl) {WaterTemperatureGraphBackground(controller: ctrl);}, (config) {return WaterTemperatureGraph(config, key: UniqueKey());}),
+  BoxDetails(SpeedThroughWaterGraph.sid, graph: true, background: (ctrl) {SpeedThroughWaterGraphBackground(controller: ctrl);}, (config) {return SpeedThroughWaterGraph(config, key: UniqueKey());}),
+  BoxDetails(SpeedOverGroundGraph.sid, graph: true, background: (ctrl) {SpeedOverGroundGraphBackground(controller: ctrl);}, (config) {return SpeedOverGroundGraph(config, key: UniqueKey());}),
+  BoxDetails(OutsidePressureGraph.sid, graph: true, background: (ctrl) {OutsidePressureGraphBackground(controller: ctrl);}, (config) {return OutsidePressureGraph(config, key: UniqueKey());}),
+  BoxDetails(OutsideTemperatureGraph.sid, graph: true, background: (ctrl) {OutsideTemperatureGraphBackground(controller: ctrl);}, (config) {return OutsideTemperatureGraph(config, key: UniqueKey());}),
   BoxDetails(VNCBox.sid, experimental: true, (config) {return VNCBox(config, key: UniqueKey());}),
-  BoxDetails(CrossTrackErrorGraph.sid, graph: true, experimental: true, background: (ctrl) {CrossTrackErrorGraphBackground(controller: ctrl);}, (config) {return CrossTrackErrorGraph(config, key: UniqueKey());}),
-  BoxDetails(DepthBelowSurfaceGraph.sid, graph: true, experimental: true, background: (ctrl) {DepthBelowSurfaceGraphBackground(controller: ctrl);}, (config) {return DepthBelowSurfaceGraph(config, key: UniqueKey());}),
-  BoxDetails(DepthBelowKeelGraph.sid, graph: true, experimental: true, background: (ctrl) {DepthBelowKeelGraphBackground(controller: ctrl);}, (config) {return DepthBelowKeelGraph(config, key: UniqueKey());}),
-  BoxDetails(DepthBelowTransducerGraph.sid, graph: true, experimental: true, background: (ctrl) {DepthBelowTransducerGraphBackground(controller: ctrl);}, (config) {return DepthBelowTransducerGraph(config, key: UniqueKey());}),
+  BoxDetails(CrossTrackErrorGraph.sid, graph: true, background: (ctrl) {CrossTrackErrorGraphBackground(controller: ctrl);}, (config) {return CrossTrackErrorGraph(config, key: UniqueKey());}),
+  BoxDetails(DepthBelowSurfaceGraph.sid, graph: true, background: (ctrl) {DepthBelowSurfaceGraphBackground(controller: ctrl);}, (config) {return DepthBelowSurfaceGraph(config, key: UniqueKey());}),
+  BoxDetails(DepthBelowKeelGraph.sid, graph: true, background: (ctrl) {DepthBelowKeelGraphBackground(controller: ctrl);}, (config) {return DepthBelowKeelGraph(config, key: UniqueKey());}),
+  BoxDetails(DepthBelowTransducerGraph.sid, graph: true, background: (ctrl) {DepthBelowTransducerGraphBackground(controller: ctrl);}, (config) {return DepthBelowTransducerGraph(config, key: UniqueKey());}),
   BoxDetails(RPiCPUTemperatureBox.sid, (config) {return RPiCPUTemperatureBox(config, key: UniqueKey());}),
   BoxDetails(RPiGPUTemperatureBox.sid, (config) {return RPiGPUTemperatureBox(config, key: UniqueKey());}),
   BoxDetails(RPiCPUUtilisationBox.sid, gauge: true, (config) {return RPiCPUUtilisationBox(config, key: UniqueKey());}),
   BoxDetails(RPiMemoryUtilisationBox.sid, gauge: true, (config) {return RPiMemoryUtilisationBox(config, key: UniqueKey());}),
   BoxDetails(RPiSDUtilisationBox.sid, gauge: true, (config) {return RPiSDUtilisationBox(config, key: UniqueKey());}),
   BoxDetails(RaspberryPiBox.sid, experimental: true, (config) {return RaspberryPiBox(config, key: UniqueKey());}),
-  BoxDetails(BatteryPowerGraph.sid, graph: true, experimental: true, background: (ctrl) {BatteryPowerGraphBackground(controller: ctrl);}, (config) {return BatteryPowerGraph(config, key: UniqueKey());}),
-  BoxDetails(SolarPowerGraph.sid, graph: true, experimental: true, background: (ctrl) {SolarPowerGraphBackground(controller: ctrl);}, (config) {return SolarPowerGraph(config, key: UniqueKey());}),
+  BoxDetails(BatteryPowerGraph.sid, graph: true, background: (ctrl) {BatteryPowerGraphBackground(controller: ctrl);}, (config) {return BatteryPowerGraph(config, key: UniqueKey());}),
+  BoxDetails(SolarPowerGraph.sid, graph: true, background: (ctrl) {SolarPowerGraphBackground(controller: ctrl);}, (config) {return SolarPowerGraph(config, key: UniqueKey());}),
 ];
 
 class _EditPageState extends State<_EditPage> {
@@ -153,7 +155,7 @@ class _EditPageState extends State<_EditPage> {
     ));
   }
 
-  _getWidgetMenus(_Box box) {
+  List<PopupMenuEntry<BoxDetails>> _getWidgetMenus(_Box box) {
     List<PopupMenuEntry<BoxDetails>> popupMenuEntries = [
       PopupMenuItem<BoxDetails>(child: Row(children: [const Icon(Icons.arrow_left), Text('Box', style: TextStyle(decoration: TextDecoration.underline))])),
       _widgetMenuEntry(BlankBox.sid, 'Blank'),
@@ -201,11 +203,13 @@ class _EditPageState extends State<_EditPage> {
         ]),
         _widgetMenuEntry(PositionBox.sid, 'Position'),
         _widgetMenuEntry(CourseOverGroundBox.sid, 'Course Over Ground'),
-        _widgetMenuEntry(HeadingBox.sid, 'Heading'),
+        _widgetMenuEntry(HeadingTrueBox.sid, 'Heading'),
+        _widgetMenuEntry(HeadingMagneticBox.sid, 'Magnetic Heading'),
         _widgetSubMenuEntry(box, 'Next Waypoint', [
           _widgetMenuEntry(NextPointDistanceBox.sid, 'Distance'),
           _widgetMenuEntry(NextPointVelocityMadeGoodBox.sid, 'VMG'),
-          _widgetMenuEntry(WaypointTimeToGoBox.sid, 'Time'),
+          _widgetMenuEntry(NextPointTimeToGoBox.sid, 'Time'),
+          _widgetMenuEntry(NextPointBearingBox.sid, 'Bearing'),
         ]),
         // _widgetMenuEntry(RouteTimeToGoBox.sid),
         _widgetSubMenuEntry(box, 'Cross Track Error', [
@@ -438,8 +442,8 @@ class _EditPageState extends State<_EditPage> {
     return Scaffold(
       body: SafeArea(child: ResizableWidget(key: UniqueKey(), onResized: (infoList) {_onResize(infoList, widget._editPage.pageRows);}, isHorizontalSeparator: true, separatorColor: Colors.red, separatorSize: 16, percentages: pageRowsPercent, children: pageRows)),
       floatingActionButton: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-        IconButton(icon: const Icon(Icons.save), onPressed: _save),
-        IconButton(icon: const Icon(Icons.close), onPressed: _close)
+        IconButton(icon: const Icon(Icons.save), style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.green)), onPressed: _save),
+        IconButton(icon: const Icon(Icons.close), style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.red)), onPressed: _discard)
       ])
     );
   }
@@ -558,14 +562,16 @@ class _EditPageState extends State<_EditPage> {
   void _save() {
     widget._page.pageRows = widget._editPage.pageRows;
     widget._controller.save();
-    _close();
-  }
-
-  void _close() {
     Navigator.pop(context);
   }
 
-  _showSettingsPage (BoxWidget boxWidget) async {
+  void _discard() async {
+    if(await widget._controller.askToConfirm(context, "Discard Changes?", alwaysAsk: true)) {
+      if(mounted) Navigator.pop(context);
+    }
+  }
+
+  Future<void> _showSettingsPage (BoxWidget boxWidget) async {
     BoxSettingsWidget boxSettingsWidget =  boxWidget.getSettingsWidget(widget._controller.getBoxSettingsJson(boxWidget.id))!;
 
     await Navigator.push(
@@ -582,7 +588,7 @@ class _EditPageState extends State<_EditPage> {
     setState(() {});
   }
 
-  _showPerBoxSettingsPage (BoxWidget boxWidget, int pri, int ci, ri, bi) async {
+  Future<void> _showPerBoxSettingsPage (BoxWidget boxWidget, int pri, int ci, ri, bi) async {
     BoxSettingsWidget boxSettingsWidget = boxWidget.getPerBoxSettingsWidget()!;
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) {
@@ -594,7 +600,7 @@ class _EditPageState extends State<_EditPage> {
     setState(() {});
   }
 
-  _showHelpPage (Widget helpWidget) async {
+  Future<void> _showHelpPage (Widget helpWidget) async {
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) {
       return _BoxHelpPage(helpWidget);
@@ -631,7 +637,7 @@ class _BoxSettingsState extends State<_BoxSettingsPage> {
     );
   }
 
-  _showHelpPage () async {
+  Future<void> _showHelpPage () async {
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) {
       return _BoxHelpPage(widget._helpWidget!);

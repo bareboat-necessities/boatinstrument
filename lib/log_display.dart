@@ -49,7 +49,7 @@ class _LogDisplayState extends State<LogDisplay> {
   }
 
   void _share (List<String> entries) async {
-    await Share.share(entries.join('\n'), subject: 'Boat Instrument Log');
+    await SharePlus.instance.share(ShareParams(text: entries.join('\n'), subject: 'Boat Instrument Log'));
   }
 }
 
@@ -70,7 +70,7 @@ class _ChangeLogState extends State<ChangeLogPage> {
     _loadLog();
   }
   
-  _loadLog() async {
+  Future<void> _loadLog() async {
     if(_log == null) {
       String s = await rootBundle.loadString('assets/changelog');
       setState(() {

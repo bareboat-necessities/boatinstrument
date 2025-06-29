@@ -21,7 +21,7 @@ class _AnchorAlarmSettings {
   int recordPoints;
 
   _AnchorAlarmSettings({
-    clientID,
+    String? clientID,
     this.authToken = '',
     this.recordSeconds = 10,
     this.recordPoints = 1000
@@ -46,66 +46,72 @@ class _AnchorPainter extends CustomPainter {
     Color currentColor = _controller.val2PSColor(_context, 1, none: Colors.grey);
     TextStyle th = Theme.of(_context).textTheme.bodyLarge!;
     TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
+    try {
+      double size = m.min(canvasSize.width, canvasSize.height) /2;
 
-    double size = m.min(canvasSize.width, canvasSize.height) /2;
+      Paint paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..color = maxColor
+        ..strokeWidth = 2.0;
 
-    Paint paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..color = maxColor
-      ..strokeWidth = 2.0;
+      double ratio = _currentRadius/(_maxRadius??_currentRadius)*size;
 
-    double ratio = _currentRadius/(_maxRadius??_currentRadius)*size;
+      if(_maxRadius != null) canvas.drawCircle(Offset(size, size), size, paint);
 
-    if(_maxRadius != null) {
-      canvas.drawCircle(Offset(size, size), size, paint);
-      tp.text = TextSpan(text: _maxRadius.toString(), style: th.copyWith(backgroundColor: maxColor));
-      tp.layout();
-      tp.paint(canvas, Offset((size*2)-tp.size.width, size-tp.size.height/2));
-    }
+      paint.color = currentColor;
+      canvas.drawCircle(Offset(size, size), ratio, paint);
 
-    paint.color = currentColor;
-    canvas.drawCircle(Offset(size, size), ratio, paint);
-    tp.text = TextSpan(text: _currentRadius.toString(), style: th.copyWith(backgroundColor: currentColor));
-    tp.layout();
-    tp.paint(canvas, Offset(size-ratio, size-tp.size.height/2));
-
-    IconData icon = Icons.anchor;
-    tp.text = TextSpan(text: String.fromCharCode(icon.codePoint),
-        style: TextStyle(fontSize: 30,
-            fontFamily: icon.fontFamily,
-            color: currentColor));
-    tp.layout();
-    tp.paint(canvas, Offset(size-tp.size.width / 2, size-tp.size.height / 2));
-
-    if(_bearingTrue != null) {
-      canvas.save();
-      canvas.translate(size, size);
-      canvas.rotate(_bearingTrue! - m.pi);
-      canvas.translate(0, ratio);
-      canvas.rotate((m.pi/2) - _apparentBearing);
-      icon = Icons.backspace_outlined;
+      IconData icon = Icons.anchor;
       tp.text = TextSpan(text: String.fromCharCode(icon.codePoint),
           style: TextStyle(fontSize: 30,
               fontFamily: icon.fontFamily,
               color: currentColor));
       tp.layout();
-      tp.paint(canvas, Offset(-tp.size.width / 2, -tp.size.height / 2));
-      canvas.drawLine(Offset.zero, Offset(-size, 0), paint);
-      canvas.restore();
-    }
+      tp.paint(canvas, Offset(size-tp.size.width / 2, size-tp.size.height / 2));
 
-    if(_anchorPosition != null && _maxRadius != null) {
-      paint.color = Colors.blue;
-      for(ll.LatLng p in _positions) {
-        double d = const ll.Distance().distance(_anchorPosition!, p);
-        double b = deg2Rad(const ll.Distance().bearing(_anchorPosition!, p).toInt());
+      if(_bearingTrue != null) {
         canvas.save();
         canvas.translate(size, size);
-        canvas.rotate(b - m.pi);
-        canvas.translate(0, d / (_maxRadius!) * size);
-        canvas.drawCircle(Offset.zero, 1, paint);
+        canvas.rotate(_bearingTrue! - m.pi);
+        canvas.translate(0, ratio);
+        canvas.rotate((m.pi/2) - _apparentBearing);
+        icon = Icons.backspace_outlined;
+        tp.text = TextSpan(text: String.fromCharCode(icon.codePoint),
+            style: TextStyle(fontSize: 30,
+                fontFamily: icon.fontFamily,
+                color: currentColor));
+        tp.layout();
+        tp.paint(canvas, Offset(-tp.size.width / 2, -tp.size.height / 2));
+        canvas.drawLine(Offset.zero, Offset(-size, 0), paint);
         canvas.restore();
       }
+
+      if(_anchorPosition != null && _maxRadius != null) {
+        paint.color = Colors.blue;
+        for(ll.LatLng p in _positions) {
+          double d = const ll.Distance().distance(_anchorPosition!, p);
+          double b = deg2Rad(const ll.Distance().bearing(_anchorPosition!, p).toInt());
+          canvas.save();
+          canvas.translate(size, size);
+          canvas.rotate(b - m.pi);
+          canvas.translate(0, d / (_maxRadius!) * size);
+          canvas.drawCircle(Offset.zero, 1, paint);
+          canvas.restore();
+        }
+      }
+
+      // We render the circle sizes last so that they're always readable.
+      if(_maxRadius != null) {
+        tp.text = TextSpan(text: _maxRadius.toString(), style: th.copyWith(backgroundColor: maxColor));
+        tp.layout();
+        tp.paint(canvas, Offset((size*2)-tp.size.width, size-tp.size.height/2));
+      }
+
+      tp.text = TextSpan(text: _currentRadius.toString(), style: th.copyWith(backgroundColor: currentColor));
+      tp.layout();
+      tp.paint(canvas, Offset(size-ratio, size-tp.size.height/2));
+    } finally {
+      tp.dispose();
     }
   }
 
@@ -170,11 +176,13 @@ class _AnchorState extends State<AnchorAlarmBox> {
   Offset _startDragOffset = Offset.zero;
   Timer? _lockTimer;
   static final List<ll.LatLng> _positions = [];
-  DateTime _lastPositionTime = DateTime.now();
+  late DateTime _lastPositionTime;
 
   @override
   void initState() {
     super.initState();
+    _lastPositionTime = widget.config.controller.now();
+
     _settings = _$AnchorAlarmSettingsFromJson(widget.config.controller.getBoxSettingsJson(widget.id));
     widget.config.controller.configure(onUpdate: _onUpdate, paths: {
       'navigation.position',
@@ -200,8 +208,8 @@ class _AnchorState extends State<AnchorAlarmBox> {
     Color dropColor = widget.config.controller.val2PSColor(context, 1, none: Colors.grey);
     Color raiseColor = widget.config.controller.val2PSColor(context, -1, none: Colors.grey);
 
-    List<Widget> col = [
-      Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+    return Padding(padding: const EdgeInsets.all(5), child: Column(children: [
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         IconButton(onPressed: _toggleLocked, icon: Icon(_unlocked ? Icons.lock_open : Icons.lock, color: dropColor)),
         IconButton(onPressed: _maxRadius == null ? _drop : null, icon: Icon(Icons.anchor, color: dropColor)),
         IconButton(onPressed: (_currentRadius != null && _maxRadius == null) ? _setMaxRadius : null, icon: Icon(Icons.highlight_off, color: dropColor)),
@@ -209,24 +217,24 @@ class _AnchorState extends State<AnchorAlarmBox> {
         IconButton(onPressed: _maxRadius == null ? null : () {_changeRadius(5);}, icon: Icon(Icons.add, color: dropColor)),
         IconButton(onPressed: _unlocked ? _raise : null, icon: Stack(children: [Icon(Icons.anchor, color: raiseColor), Icon(Icons.close, color: raiseColor)])),
       ]),
-    ];
-
-    if(_currentRadius != null) {
-      col.add(Expanded(
-          child: GestureDetector(onPanDown: _unlocked ? _startDrag : null, onPanEnd: _unlocked ? _stopDrag : null,
-              child: RepaintBoundary(child: CustomPaint(size: Size.infinite,
-                painter: _AnchorPainter(
-                    widget.config.controller,
-                    context,
-                    _maxRadius,
-                    _currentRadius!,
-                    _bearingTrue,
-                    _apparentBearing??0,
-                    _anchorPosition,
-                    _positions))))),
-      );
-    }
-    return Padding(padding: const EdgeInsets.all(5), child: Column(children: col));
+      if(_currentRadius != null)
+        Expanded(child: GestureDetector(onPanDown: _unlocked ? _startDrag : null, onPanEnd: _unlocked ? _stopDrag : null,
+          child: ClipRect(
+            child: RepaintBoundary(child: CustomPaint(size: Size.infinite,
+              painter: _AnchorPainter(
+                widget.config.controller,
+                context,
+                _maxRadius,
+                _currentRadius!,
+                _bearingTrue,
+                _apparentBearing??0,
+                _anchorPosition,
+                _positions
+              )
+            ))
+          )
+        ))
+    ]));
   }
 
   void _startDrag(DragDownDetails details) {
@@ -295,7 +303,7 @@ class _AnchorState extends State<AnchorAlarmBox> {
     }
   }
 
-  _sendCommand(String path, String params) async {
+  Future<void> _sendCommand(String path, String params) async {
     if(widget.config.editMode) {
       return;
     }
@@ -332,7 +340,7 @@ class _AnchorState extends State<AnchorAlarmBox> {
         try {
           switch (u.path) {
             case 'navigation.position':
-              DateTime now = DateTime.now();
+              DateTime now = widget.config.controller.now();
               if(now.difference(_lastPositionTime) >= Duration(seconds: _settings.recordSeconds)) {
                 _lastPositionTime = now;
 
@@ -411,7 +419,7 @@ class _AnchorAlarmSettingsState extends State<_AnchorAlarmSettingsWidget> {
 
     List<Widget> list = [
       ListTile(
-        leading: const Text("Record Period:"),
+        leading: const Text("Record Position Period:"),
         title: Slider(
             min: 1,
             max: 60,

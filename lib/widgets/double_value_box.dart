@@ -61,7 +61,7 @@ abstract class DoubleValueBox extends BoxWidget {
   set extremeValue(double value) => extremeValues[id] = value;
 }
 
-class DoubleValueBoxState<T extends DoubleValueBox> extends State<T> {
+class DoubleValueBoxState<T extends DoubleValueBox> extends HeadedBoxState<T> {
   double? value;
   double? displayValue;
 
@@ -77,30 +77,22 @@ class DoubleValueBoxState<T extends DoubleValueBox> extends State<T> {
       displayValue = 12.3;
     }
 
-    String valueText = (displayValue == null) ?
+    text = (displayValue == null) ?
       '-' :
       fmt.format('{:${widget.minLen+(widget.precision > 0?1:0)+widget.precision}.${widget.precision}f}', widget.portStarboard ? displayValue!.abs() : displayValue!);
 
-    TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
+    header = '${widget.valueToDisplay.title}${widget.title} ${widget.units(value??0)} ${widget.portStarboard ? val2PS(displayValue??0):''}';
 
-    const double pad = 5.0;
-    double fontSize = maxFontSize(valueText, style,
-          widget.config.constraints.maxHeight - style.fontSize! - (3 * pad),
-          widget.config.constraints.maxWidth - (2 * pad));
+    color = widget.portStarboard ? widget.config.controller.val2PSColor(context, displayValue??0) : null;
 
-    return Column(mainAxisAlignment: MainAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text('${widget.valueToDisplay.title}${widget.title} ${widget.units(value??0)} ${widget.portStarboard ? val2PS(displayValue??0):''}', style: style),
-        if(widget.valueToDisplay != DoubleValueToDisplay.value) IconButton(iconSize: style.fontSize, icon: Icon(Icons.restore), constraints: BoxConstraints.tightFor(height: style.fontSize!), visualDensity: VisualDensity(vertical: VisualDensity.minimumDensity), onPressed: _resetExtremeValue)
-      ])),
-      // We need to disable the device text scaling as this interferes with our text scaling.
-      Expanded(child: Center(child: Padding(padding: const EdgeInsets.all(pad),
-          child: Text(valueText, textScaler: TextScaler.noScaling,
-              style: style.copyWith(fontSize: fontSize, color: widget.portStarboard ? widget.config.controller.val2PSColor(context, displayValue??0) : null)))))
+    return Stack(children: [
+      super.build(context),
+      if(widget.valueToDisplay != DoubleValueToDisplay.value) Positioned(top: 0, right: 0, child:
+        IconButton(icon: Icon(Icons.restore), onPressed: _resetExtremeValue))
     ]);
   }
 
-  processUpdates(List<Update>? updates) {
+  void processUpdates(List<Update>? updates) {
     if(updates == null) {
       value = displayValue = null;
     } else {
