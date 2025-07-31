@@ -24,7 +24,7 @@ abstract class DoubleValueGaugeBox extends DoubleValueBox {
   final List<GaugeRange> ranges;
 
   const DoubleValueGaugeBox(super.config, super.title, super.path,
-    {super.minValue = 0, required super.maxValue, super.angle, super.relativeAngle, super.smoothing, super.dataTimeout,
+    {super.minValue = 0, required super.maxValue, super.angle, super.relativeAngle, super.smoothing, super.dataType,
     this.step = 1, this.ranges = const [],
     super.key});
 
@@ -76,10 +76,10 @@ class _SemiGaugePainter extends CustomPainter {
       ..color = theme.colorScheme.onSurface
       ..strokeWidth = 2.0;
 
-    double base = w;
+    double base = min(w, h*2);
     if(_orientation == GaugeOrientation.left ||
        _orientation == GaugeOrientation.right) {
-      base = h;
+      base = min(h, w*2);
     }
 
     canvas.save();
@@ -148,10 +148,10 @@ class _SemiGaugeNeedlePainter extends CustomPainter {
       ..style = PaintingStyle.fill
       ..color = Colors.blue;
 
-    double base = w;
+    double base = min(w, h*2);
     if(_orientation == GaugeOrientation.left ||
-        _orientation == GaugeOrientation.right) {
-      base = h;
+       _orientation == GaugeOrientation.right) {
+      base = min(h, w*2);
     }
 
     Path needle = Path()
@@ -179,7 +179,7 @@ abstract class DoubleValueSemiGaugeBox extends DoubleValueGaugeBox {
   final bool mirror;
 
   const DoubleValueSemiGaugeBox(super.config, super.title, this.orientation, super.path,
-    {super.minValue = 0, required super.maxValue, super.step, super.angle, super.relativeAngle, super.smoothing, super.dataTimeout, super.ranges,
+    {super.minValue = 0, required super.maxValue, super.step, super.angle, super.relativeAngle, super.smoothing, super.dataType, super.ranges,
     this.mirror = false, super.key});
 
   @override
@@ -325,7 +325,7 @@ abstract class DoubleValueCircularGaugeBox extends DoubleValueGaugeBox {
 
   const DoubleValueCircularGaugeBox(super.config, super.title, super.path,
     {super.minValue = 0, required super.maxValue, required super.step,
-    super.ranges, super.smoothing, super.dataTimeout, super.key});
+    super.ranges, super.smoothing, super.dataType, super.key});
 
   @override
   DoubleValueCircularGaugeBoxState createState() => DoubleValueCircularGaugeBoxState();
@@ -423,7 +423,7 @@ abstract class DoubleValueBarGaugeBox extends DoubleValueGaugeBox {
 
   const DoubleValueBarGaugeBox(super.config, super.title, super.path,
     {this.showPercent = false, this.barColor = Colors.blue, super.minValue = 0, required super.maxValue, required super.step,
-    super.ranges, super.smoothing, super.dataTimeout, super.key});
+    super.ranges, super.smoothing, super.dataType, super.key});
 
   @override
   DoubleValueBarGaugeBoxState createState() => DoubleValueBarGaugeBoxState();
