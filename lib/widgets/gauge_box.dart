@@ -136,8 +136,9 @@ class _SemiGaugePainter extends CustomPainter {
 class _SemiGaugeNeedlePainter extends CustomPainter {
   final GaugeOrientation _orientation;
   final double _angle;
+  final Color _color;
 
-  _SemiGaugeNeedlePainter(this._orientation, this._angle);
+  _SemiGaugeNeedlePainter(this._orientation, this._angle, this._color);
 
   @override
   void paint(Canvas canvas, Size canvasSize) {
@@ -146,7 +147,7 @@ class _SemiGaugeNeedlePainter extends CustomPainter {
 
     Paint paint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.blue;
+      ..color = _color;
 
     double base = min(w, h*2);
     if(_orientation == GaugeOrientation.left ||
@@ -154,12 +155,15 @@ class _SemiGaugeNeedlePainter extends CustomPainter {
       base = min(h, w*2);
     }
 
+    double nW = base/20;
+    nW = min(nW, 10);
+
     Path needle = Path()
-      ..moveTo(-10.0, 0.0)
+      ..moveTo(-nW, 0.0)
       ..lineTo(0.0, base/2)
-      ..lineTo(10.0, 0.0)
+      ..lineTo(nW, 0.0)
       ..moveTo(0.0, 0.0)
-      ..addArc(const Offset(-10, -10.0) & const Size(20.0, 20.0), 0.0, -pi)
+      ..addArc(Offset(-nW, -nW) & Size(nW*2, nW*2), 0.0, -pi)
       ..close();
 
     canvas.translate(base*_orientation.xm, base*_orientation.ym);
@@ -191,28 +195,38 @@ class DoubleValueSemiGaugeBoxState<T extends DoubleValueSemiGaugeBox> extends Do
   @override
   Widget build(BuildContext context) {
     GaugeOrientation o = widget.orientation;
+    const double pad = 5.0;
+    final double fontPad = Theme.of(context).textTheme.titleMedium!.fontSize! - pad;
 
     List<Widget> stack = [
       Positioned(top: o.titleTop, bottom: o.titleBottom, left: o.titleLeft, right: o.titleRight, child: Text(widget.title)),
       Positioned(top: o.unitsTop, bottom: o.unitsBottom, left: o.unitsLeft, right: o.unitsRight, child: Text(widget.units(displayValue??0.0))),
-      CustomPaint(
+      Container(padding: EdgeInsets.all(fontPad), child: CustomPaint(
           size: Size.infinite,
           painter: _SemiGaugePainter(context, o, widget.mirror, minDisplay, maxDisplay, _displayStep, _displayRanges)
-      )
+      ))
     ];
 
+    double? angle;
+    Color color = Colors.blue;
     if(displayValue != null) {
-      double angle = ((pi/((widget.maxValue??_defaultMax) - (widget.minValue??0))) * (value! - (widget.minValue??0))) - pi/2;
+      angle = ((pi/((widget.maxValue??_defaultMax) - (widget.minValue??0))) * (value! - (widget.minValue??0))) - pi/2;
       if(widget.mirror) {
         angle = (pi*2)-angle;
       }
-      stack.add(CustomPaint(
-          size: Size.infinite,
-          painter: _SemiGaugeNeedlePainter(o, angle)
-      ));
+    } else if (inRange != 0) {
+      angle = (pi/2) * inRange;
+      color = Colors.red;
     }
 
-    return Container(padding: const EdgeInsets.all(15.0), child: RepaintBoundary(child: Stack(children: stack)));
+    if(angle != null) {
+      stack.add(Container(padding: EdgeInsets.all(fontPad), child:CustomPaint(
+        size: Size.infinite,
+        painter: _SemiGaugeNeedlePainter(o, angle, color)
+      )));
+    }
+
+    return Container(padding: const EdgeInsets.all(pad), child: RepaintBoundary(child: Stack(children: stack)));
   }
 }
 
@@ -294,22 +308,26 @@ class _CircularGaugePainter extends CustomPainter {
 
 class _CircularGaugeNeedlePainter extends CustomPainter {
   final double _angle;
+  final Color _color;
 
-  _CircularGaugeNeedlePainter(this._angle);
+  _CircularGaugeNeedlePainter(this._angle, this._color);
 
   @override
   void paint(Canvas canvas, Size canvasSize) {
     double size = min(canvasSize.width, canvasSize.height);
+    double nW = size/20;
+    nW = min(nW, 10);
+
     Paint paint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.blue;
+      ..color = _color;
 
     Path needle = Path()
-      ..moveTo(-10.0, 0.0)
+      ..moveTo(-nW, 0.0)
       ..lineTo(0.0, -size/2)
-      ..lineTo(10.0, 0.0)
+      ..lineTo(nW, 0.0)
       ..moveTo(0.0, 0.0)
-      ..addArc(const Offset(-10, -10.0) & const Size(20.0, 20.0), 0.0, pi)
+      ..addArc(Offset(-nW, -nW) & Size(nW*2, nW*2), 0.0, pi)
       ..close();
 
     canvas.translate(size/2, size/2);
@@ -344,15 +362,22 @@ class DoubleValueCircularGaugeBoxState<T extends DoubleValueCircularGaugeBox> ex
       )
     ];
 
+    double steps = (widget.maxValue??_defaultMax) - (widget.minValue??0);
+    double angleStep = (2*pi-(circularGaugeOffset*2))/steps;
+    double? angle;
+    Color color = Colors.blue;
     if(displayValue != null) {
-      double steps = (widget.maxValue??_defaultMax) - (widget.minValue??0);
-      double angleStep = (2*pi-(circularGaugeOffset*2))/steps;
+      angle = angleStep * (value! - (widget.minValue??0));
+    }
+    else if(inRange != 0) {
+      angle = (inRange < 0) ? (2*pi) : (2*pi)-(circularGaugeOffset*2);
+      color = Colors.red;
+    }
 
-      double angle = angleStep * (value! - (widget.minValue??0));
-
+    if(angle != null) {
       stack.add(CustomPaint(
           size: Size.infinite,
-          painter: _CircularGaugeNeedlePainter(angle)
+          painter: _CircularGaugeNeedlePainter(angle, color)
       ));
     }
 
