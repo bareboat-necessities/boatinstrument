@@ -22,7 +22,8 @@ docker exec --privileged -ti $DOCKER_CONTAINER_ID apt-get update
 docker exec --privileged -ti $DOCKER_CONTAINER_ID apt-get -y install apt-transport-https wget curl gnupg2
 docker exec --privileged -ti $DOCKER_CONTAINER_ID apt-get -y install dpkg-dev debhelper devscripts equivs pkg-config apt-utils fakeroot clang cmake ninja-build \
   libgtk-3-dev libgtk-3-0 libblkid1 liblzma5 liblzma-dev libstdc++-12-dev \
-  libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+  libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+  lld-14 llvm-14 clang-14 binutils
 
 docker exec --privileged -ti "$DOCKER_CONTAINER_ID" /bin/bash -xec \
   "git clone --depth 1 https://github.com/philseeley/actions_menu_appbar.git; cd ci-source/.circleci; chmod -v u+w *.sh; /bin/bash -xe ./flutter-build.sh $APP_TYPE"
