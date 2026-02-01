@@ -16,10 +16,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.7.0+7
+version: 0.9.1+10
 
 environment:
-  sdk: '>=3.3.3 <4.0.0'
+  sdk: '>=3.8.0 <4.0.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -46,20 +46,29 @@ dependencies:
   nanoid:
   share_plus:
   file_picker:
+  filesystem_picker:
   provider:
   flutter_inappwebview:
   screen_brightness:
   flutter_email_sender:
   intl:
-#  great_circle_distance_calculator:
+  # We can't use the pure dart implementation "multicast_dns" because Apple doesn't allow
+  # you to create multicast ports.
+  # See: https://github.com/flutter/flutter/issues/42102#issuecomment-2308904083
   bonsoir:
   audioplayers:
   latlong2:
   args:
+  markdown_widget:
+  url_launcher: 
   flutter_rfb:
   flutter_material_color_picker:
   color_hex:
   flutter_fullscreen:
+  text_scroll:
+  flutter_onscreen_keyboard:
+  collection:
+#  great_circle_distance_calculator:
   actions_menu_appbar:
     path: ../actions_menu_appbar
 
@@ -85,6 +94,11 @@ dev_dependencies:
 flutter:
   assets:
     - assets/
+    - assets/doc/
+    - assets/icons/
+    - assets/icons/dark/
+    - assets/icons/light/
+    - assets/starlink/
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
@@ -125,6 +139,9 @@ flutter:
     - family: Red Hat Mono
       fonts:
         - asset: fonts/RedHatMono-Regular.ttf
+    - family: Awesome
+      fonts:
+        - asset: fonts/Font-Awesome-7-Free-Solid-900.otf
 
 msix_config:
   display_name: Boat Instrument

@@ -6,26 +6,20 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:json_annotation/json_annotation.dart';
 import 'package:latlong2/latlong.dart' as ll;
-import 'package:nanoid/nanoid.dart';
 
-import '../authorization.dart';
 import '../boatinstrument_controller.dart';
 
 part 'anchor_box.g.dart';
 
 @JsonSerializable()
 class _AnchorAlarmSettings {
-  String clientID;
-  String authToken;
   int recordSeconds;
   int recordPoints;
 
   _AnchorAlarmSettings({
-    String? clientID,
-    this.authToken = '',
     this.recordSeconds = 10,
     this.recordPoints = 1000
-  }) : clientID = clientID??'boatinstrument-anchor-alarm-${customAlphabet('0123456789', 4)}';
+  });
 }
 
 class _AnchorPainter extends CustomPainter {
@@ -37,8 +31,9 @@ class _AnchorPainter extends CustomPainter {
   final double _apparentBearing;
   final ll.LatLng? _anchorPosition;
   final List<ll.LatLng> _positions;
+  final double? _windAngleApparent;
 
-  const _AnchorPainter(this._controller, this._context, this._maxRadius, this._currentRadius, this._bearingTrue, this._apparentBearing, this._anchorPosition, this._positions);
+  const _AnchorPainter(this._controller, this._context, this._maxRadius, this._currentRadius, this._bearingTrue, this._apparentBearing, this._anchorPosition, this._windAngleApparent, this._positions);
 
   @override
   void paint(Canvas canvas, Size canvasSize) {
@@ -74,6 +69,7 @@ class _AnchorPainter extends CustomPainter {
         canvas.translate(size, size);
         canvas.rotate(_bearingTrue! - m.pi);
         canvas.translate(0, ratio);
+        canvas.save();
         canvas.rotate((m.pi/2) - _apparentBearing);
         icon = Icons.backspace_outlined;
         tp.text = TextSpan(text: String.fromCharCode(icon.codePoint),
@@ -83,6 +79,12 @@ class _AnchorPainter extends CustomPainter {
         tp.layout();
         tp.paint(canvas, Offset(-tp.size.width / 2, -tp.size.height / 2));
         canvas.drawLine(Offset.zero, Offset(-size, 0), paint);
+        canvas.restore();
+        if(_windAngleApparent != null) {
+          paint.color = Colors.blue;
+          canvas.rotate((m.pi/2) + _windAngleApparent! - _apparentBearing);
+          canvas.drawLine(Offset.zero, Offset(-size/2, 0), paint);
+        }
         canvas.restore();
       }
 
@@ -131,35 +133,11 @@ class AnchorAlarmBox extends BoxWidget {
 
   @override
   BoxSettingsWidget getSettingsWidget(Map<String, dynamic> json) {
-    return _AnchorAlarmSettingsWidget(super.config.controller, _$AnchorAlarmSettingsFromJson(json));
+    return _AnchorAlarmSettingsWidget(_$AnchorAlarmSettingsFromJson(json));
   }
 
   @override
-  Widget? getHelp(BuildContext context) {
-    return ListView(children: [
-      ListTile(title: RichText(text: TextSpan(style: Theme.of(context).textTheme.bodyMedium, children: const [
-        TextSpan(text: '''Ensure the signalk-anchoralarm-plugin is installed and configured on signalk.
-
-When you drop your anchor press the '''),
-        WidgetSpan(child: Icon(Icons.anchor)),
-        TextSpan(text: ''' button. Then payout your chain/rode. Once dug-in, press the '''),
-        WidgetSpan(child: Icon(Icons.highlight_off)),
-        TextSpan(text: ''' button to set the alarm radius. The "Alarm Radius Fudge Factor" setting in the signalk-anchoralarm-plugin gets added to your current distance from the anchor.
-
-Once set, the anchor position can be moved by unlocking and dragging the anchor.''')]))),
-      const ListTile(leading: Icon(Icons.anchor), title: Text('Marks the anchor at the current boat position')),
-      const ListTile(leading: Icon(Icons.lock), title: Text('Locks/Unlocks the ability to move or set the anchor')),
-      const ListTile(leading: Icon(Icons.highlight_off), title: Text('Sets the alarm radius to the current boat position')),
-      const ListTile(leading: Icon(Icons.remove), title: Text('Decreases the alarm radius by 5m')),
-      const ListTile(leading: Icon(Icons.add), title: Text('Increases the alarm radius by 5m')),
-    ]);
-  }
-
-  @override
-  Widget? getSettingsHelp() => const HelpTextWidget('''To be able to set the Anchor Alarm, the device must be given "admin" permission to signalk. Request an Auth Token and without closing the settings page authorise the device in the signalk web interface. When the Auth Token is shown, the settings page can be closed.
-
-The Client ID can be set to reflect the instrument's location, e.g. "boatinstrument-anchor-alarm-helm". Or the ID can be set to the same value for all instruments to share the same authorisation.
-''');
+  Widget? getHelp() => HelpPage(url: 'doc:anchor-alarm.md');
 
   @override
   State<StatefulWidget> createState() => _AnchorState();
@@ -168,6 +146,7 @@ The Client ID can be set to reflect the instrument's location, e.g. "boatinstrum
 class _AnchorState extends State<AnchorAlarmBox> {
   late final _AnchorAlarmSettings _settings;
   ll.LatLng? _anchorPosition;
+  double? _windAngleApparent;
   int? _maxRadius;
   int? _currentRadius;
   double? _bearingTrue;
@@ -186,6 +165,7 @@ class _AnchorState extends State<AnchorAlarmBox> {
     _settings = _$AnchorAlarmSettingsFromJson(widget.config.controller.getBoxSettingsJson(widget.id));
     widget.config.controller.configure(onUpdate: _onUpdate, paths: {
       'navigation.position',
+      'environment.wind.angleApparent',
       'navigation.anchor.*'
     });
   }
@@ -203,6 +183,7 @@ class _AnchorState extends State<AnchorAlarmBox> {
       _currentRadius = 80;
       _bearingTrue = deg2Rad(45);
       _apparentBearing = deg2Rad(45);
+      _windAngleApparent = deg2Rad(45);
     }
 
     Color dropColor = widget.config.controller.val2PSColor(context, 1, none: Colors.grey);
@@ -229,6 +210,7 @@ class _AnchorState extends State<AnchorAlarmBox> {
                 _bearingTrue,
                 _apparentBearing??0,
                 _anchorPosition,
+                _windAngleApparent,
                 _positions
               )
             ))
@@ -316,8 +298,7 @@ class _AnchorState extends State<AnchorAlarmBox> {
           uri,
           headers: {
             "Content-Type": "application/json",
-            "accept": "application/json",
-            "Authorization": "Bearer ${_settings.authToken}"
+            "accept": "application/json"
           },
           body: params
       );
@@ -332,14 +313,12 @@ class _AnchorState extends State<AnchorAlarmBox> {
     }
   }
 
-  void _onUpdate(List<Update>? updates) {
-    if(updates == null) {
-      _maxRadius = _currentRadius = _bearingTrue = _apparentBearing = null;
-    } else {
-      for (Update u in updates) {
-        try {
-          switch (u.path) {
-            case 'navigation.position':
+  void _onUpdate(List<Update> updates) {
+    for (Update u in updates) {
+      try {
+        switch (u.path) {
+          case 'navigation.position':
+            if(u.value != null) {
               DateTime now = widget.config.controller.now();
               if(now.difference(_lastPositionTime) >= Duration(seconds: _settings.recordSeconds)) {
                 _lastPositionTime = now;
@@ -352,41 +331,50 @@ class _AnchorState extends State<AnchorAlarmBox> {
                   _positions.removeRange(0, _settings.recordPoints ~/ 10);
                 }
               }
-              break;
-            case 'navigation.anchor.position':
-              if(u.value != null) _anchorPosition = ll.LatLng((u.value['latitude'] as num).toDouble(), (u.value['longitude'] as num).toDouble());
-              break;
-            case 'navigation.anchor.maxRadius':
-              try {
-                if(u.value == null) {
-                  _maxRadius = null;
-                } else {
-                  _maxRadius = (u.value as num).round();
-                }
-              } catch (_){
-                // This only happens if the Anchor Alarm webapp is used.
-                _maxRadius = int.parse(u.value as String);
-              }
-              break;
-            case 'navigation.anchor.currentRadius':
+            }
+            break;
+          case 'environment.wind.angleApparent':
+            if(u.value == null) {
+              _windAngleApparent = null;
+            } else {
+              double v = (u.value as num).toDouble();
+              _windAngleApparent = (u.value == null) ? null : averageAngle(_windAngleApparent ?? v, v,
+                smooth: widget.config.controller.valueSmoothing, relative: true);
+            }
+            break;
+          case 'navigation.anchor.position':
+            _anchorPosition = (u.value == null) ? null : ll.LatLng((u.value['latitude'] as num).toDouble(), (u.value['longitude'] as num).toDouble());
+            break;
+          case 'navigation.anchor.maxRadius':
               if(u.value == null) {
-                _currentRadius = null;
+                _maxRadius = null;
               } else {
-                _currentRadius = (u.value as num).round();
-                // Make sure we have a radius to avoid div-by-zero error.
-                _currentRadius = _currentRadius == 0 ? 1 : _currentRadius;
+                try {
+                  _maxRadius = (u.value as num).round();
+                } catch (_){
+                  // This only happens if the Anchor Alarm webapp is used.
+                  _maxRadius = int.parse(u.value as String);
+                }
               }
-              break;
-            case 'navigation.anchor.bearingTrue':
-              if(u.value != null) _bearingTrue = (u.value as num).toDouble()-m.pi;
-              break;
-            case 'navigation.anchor.apparentBearing':
-              if(u.value != null) _apparentBearing = (u.value as num).toDouble();
-              break;
-          }
-        } catch (e) {
-          widget.config.controller.l.e("Error converting $u", error: e);
+            break;
+          case 'navigation.anchor.currentRadius':
+            if(u.value == null) {
+              _currentRadius = null;
+            } else {
+              _currentRadius = (u.value as num).round();
+              // Make sure we have a radius to avoid div-by-zero error.
+              _currentRadius = _currentRadius == 0 ? 1 : _currentRadius;
+            }
+            break;
+          case 'navigation.anchor.bearingTrue':
+            _bearingTrue = (u.value == null) ? null : (u.value as num).toDouble()-m.pi;
+            break;
+          case 'navigation.anchor.apparentBearing':
+            _apparentBearing = (u.value == null) ? null : (u.value as num).toDouble();
+            break;
         }
+      } catch (e) {
+        widget.config.controller.l.e("Error converting $u", error: e);
       }
     }
 
@@ -397,10 +385,9 @@ class _AnchorState extends State<AnchorAlarmBox> {
 }
 
 class _AnchorAlarmSettingsWidget extends BoxSettingsWidget {
-  final BoatInstrumentController _controller;
   final _AnchorAlarmSettings _settings;
 
-  const _AnchorAlarmSettingsWidget(this._controller, this._settings);
+  const _AnchorAlarmSettingsWidget(this._settings);
 
   @override
   createState() => _AnchorAlarmSettingsState();
@@ -450,42 +437,8 @@ class _AnchorAlarmSettingsState extends State<_AnchorAlarmSettingsWidget> {
       ListTile(
         title: Text('Records for ${(s.recordSeconds*s.recordPoints/60/60).toStringAsFixed(2)} hours'),
       ),
-      ListTile(
-          leading: const Text("Client ID:"),
-          title: TextFormField(
-              initialValue: s.clientID,
-              onChanged: (value) => s.clientID = value)
-      ),
-      ListTile(
-          leading: const Text("Request Auth Token:"),
-          title: IconButton(onPressed: _requestAuthToken, icon: const Icon(Icons.login))
-      ),
-      ListTile(
-          leading: const Text("Auth token:"),
-          title: Text(s.authToken)
-      ),
     ];
 
     return ListView(children: list);
-  }
-
-  void _requestAuthToken() async {
-    SignalKAuthorization(widget._controller).request(widget._settings.clientID, "Boat Instrument - Anchor Alarm",
-            (authToken) {
-          setState(() {
-            widget._settings.authToken = authToken;
-          });
-        },
-            (msg) {
-          if (mounted) {
-            setState(() {
-              widget._settings.authToken = msg;
-            });
-          }
-        });
-
-    setState(() {
-      widget._settings.authToken = 'PENDING - keep this page open until request approved';
-    });
   }
 }

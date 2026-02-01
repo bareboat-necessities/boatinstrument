@@ -76,7 +76,7 @@ class CrossTrackErrorDeltaBox extends DoubleValueSemiGaugeBox {
 
   @override
   String units(double value) {
-    return '\u0394'; // Delta symbol
+    return deltaChar; // Delta symbol
   }
 
   @override
@@ -108,8 +108,8 @@ class _CrossTrackErrorDeltaBoxState extends DoubleValueSemiGaugeBoxState<CrossTr
   // We override this because we don't want to check min and max as the gauge needs these to
   // be adjusted for the diff, not the absolute value.
   @override
-  processUpdates(List<Update>? updates) {
-    if(updates == null) {
+  processUpdates(List<Update> updates) {
+    if(updates[0].value == null) {
       value = displayValue = null;
       inRange = 0;
     } else {
@@ -244,7 +244,7 @@ class NextPointBearingBox extends DoubleValueBox {
   @override
   String get id => sid;
 
-  const NextPointBearingBox(BoxWidgetConfig config, {super.key}) : super(config, 'WPT BRG', 'navigation.*.nextPoint.bearingTrue', minLen: 3, precision: 0, angle: true);
+  const NextPointBearingBox(BoxWidgetConfig config, {super.key}) : super(config, 'WPT BRG', 'navigation.*.nextPoint.bearingTrue', minLen: 3, precision: 0, angle: true, smoothing: false);
 
   @override
   double convert(double value) {
@@ -275,9 +275,11 @@ abstract class TimeToGoBox extends BoxWidget {
   State<TimeToGoBox> createState() => TimeToGoBoxState();
 }
 
-class TimeToGoBoxState<T extends TimeToGoBox> extends HeadedBoxState<T> {
+class TimeToGoBoxState<T extends TimeToGoBox> extends HeadedTextBoxState<T> {
   int? _timeToGo;
 
+  TimeToGoBoxState() : super(scrolling: true);
+  
   @override
   void initState() {
     super.initState();
@@ -295,16 +297,7 @@ class TimeToGoBoxState<T extends TimeToGoBox> extends HeadedBoxState<T> {
 
     if(_timeToGo != null) {
       Duration ttg = Duration(seconds: _timeToGo!);
-      List<String> parts = ttg.toString().split(RegExp('[.:]'));
-      int hours = int.parse(parts[0]);
-      int days = hours~/24;
-      if(days > 0) {
-        text = '${days}d${hours%24}h';
-      } else if(hours > 0) {
-        text = '${hours}h${parts[1]}m';
-      } else {
-        text = '${parts[1]}m${parts[2]}s';
-      }
+      text = duration2HumanString(ttg);
 
       DateTime now = widget.config.controller.now().toLocal();
       DateTime eta = now.add(ttg);
@@ -322,12 +315,14 @@ class TimeToGoBoxState<T extends TimeToGoBox> extends HeadedBoxState<T> {
     return super.build(context);
   }
 
-  void processData(List<Update>? updates) {
-    if(updates == null) {
+  void processData(List<Update> updates) {
+    if(updates[0].value == null) {
       _timeToGo = null;
     } else {
       try {
-        _timeToGo = (updates[0].value as num).toInt();
+        double next = (updates[0].value as num).toDouble();
+
+        _timeToGo = averageDouble(_timeToGo?.toDouble()??next, next, smooth: widget.config.controller.valueSmoothing).toInt();
       } catch (e) {
         widget.config.controller.l.e("Error converting $updates", error: e);
       }
@@ -398,6 +393,7 @@ class NextPointTimeToGoBox extends TimeToGoBox {
 //               break;
 //           }
 //           //TODO Something like this when all the sections of the route are known.
+//           // Needs smoothing.
 //           _timeToGo = _routeDistance~/_waypointVMG + _waypointTTG;
 //         } catch (e) {
 //           widget.config.controller.l.e("Error converting $u", error: e);
@@ -413,12 +409,10 @@ class NextPointTimeToGoBox extends TimeToGoBox {
 
 @JsonSerializable()
 class _PositionSettings {
-  String latFormat;
-  String lonFormat;
+  String format;
 
   _PositionSettings({
-    this.latFormat = '0{lat0d 0m.mmm c}',
-    this.lonFormat = '{lon0d 0m.mmm c}'
+    this.format = '0{lat0d 0m.mmm c}\n{lon0d 0m.mmm c}'
   });
 }
 
@@ -442,10 +436,10 @@ class PositionBox extends BoxWidget {
   }
 
   @override
-  Widget? getSettingsHelp() => const HelpTextWidget('For a full list of formats see https://pub.dev/packages/latlong_formatter');
+  Widget? getSettingsHelp() => const HelpPage(text: 'For a full list of formats see https://pub.dev/packages/latlong_formatter');
 }
 
-class _PositionBoxState extends HeadedBoxState<PositionBox> {
+class _PositionBoxState extends HeadedTextBoxState<PositionBox> {
   _PositionSettings _settings = _PositionSettings();
   LatLongFormatter _llf = LatLongFormatter('');
   double? _latitude;
@@ -454,9 +448,10 @@ class _PositionBoxState extends HeadedBoxState<PositionBox> {
   @override
   void initState() {
     super.initState();
+    header = 'Position';
     _settings = _$PositionSettingsFromJson(widget.config.controller.getBoxSettingsJson(widget.id));
     widget.config.controller.configure(onUpdate: _processData, paths: {'navigation.position'});
-    _llf = LatLongFormatter('${_settings.latFormat}\n${_settings.lonFormat}');
+    _llf = LatLongFormatter(_settings.format);
   }
 
   @override
@@ -466,15 +461,14 @@ class _PositionBoxState extends HeadedBoxState<PositionBox> {
     }
 
     text = (_latitude == null || _longitude == null) ?
-      '--- --.--- -\n--- --.--- -' :
+      '-' :
       _llf.format(LatLong(_latitude!, _longitude!));
-    lines = 2;
-    header = 'Position';
+
     return super.build(context);
   }
 
-  void _processData(List<Update>? updates) {
-    if(updates == null) {
+  void _processData(List<Update> updates) {
+    if(updates[0].value == null) {
       _latitude = _longitude = null;
     } else {
       try {
@@ -513,17 +507,14 @@ class _PositionSettingsState extends State<_PositionSettingsWidget> {
 
     List<Widget> list = [
       ListTile(
-          leading: const Text("Lat Format:"),
-          title: TextFormField(
-              initialValue: s.latFormat,
-              onChanged: (value) => s.latFormat = value)
-      ),
-      ListTile(
-          leading: const Text("Long Format:"),
-          title: TextFormField(
-              initialValue: s.lonFormat,
-              onChanged: (value) => s.lonFormat = value)
-      ),
+          leading: const Text("Format:"),
+          title: BiTextFormField(
+            textInputAction: TextInputAction.newline,
+            keyboardType: TextInputType.multiline,
+            maxLines: null,
+            initialValue: s.format,
+            onChanged: (value) => s.format = value)
+      )
     ];
 
     return ListView(children: list);
@@ -563,5 +554,41 @@ class RateOfTurnBox extends DoubleValueBox {
   @override
   String units(double value) {
     return '$degreesUnits/s';
+  }
+}
+
+class NavigationLogBox extends DoubleValueBox {
+  static const String sid = 'navigation-log';
+  @override
+  String get id => sid;
+
+  const NavigationLogBox(BoxWidgetConfig config, {super.key}) : super(config, 'Log', 'navigation.log', precision: 0, dataType: SignalKDataType.infrequent, smoothing: false);
+
+  @override
+  double convert(double value) {
+    return config.controller.distanceToDisplay(value);
+  }
+
+  @override
+  String units(double value) {
+    return config.controller.distanceUnitsToDisplay(value);
+  }
+}
+
+class NavigationTripLogBox extends DoubleValueBox {
+  static const String sid = 'navigation-log-trip';
+  @override
+  String get id => sid;
+
+  const NavigationTripLogBox(BoxWidgetConfig config, {super.key}) : super(config, 'Trip Log', 'navigation.trip.log', precision: 0, dataType: SignalKDataType.infrequent, smoothing: false);
+
+  @override
+  double convert(double value) {
+    return config.controller.distanceToDisplay(value);
+  }
+
+  @override
+  String units(double value) {
+    return config.controller.distanceUnitsToDisplay(value);
   }
 }

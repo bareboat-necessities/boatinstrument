@@ -21,17 +21,17 @@ class _EditPagesState extends State<EditPagesPage> {
 
       pageList.add(ListTile(key: UniqueKey(),
           leading: IconButton(icon: const Icon(Icons.edit), onPressed: () {_editPage(page);}),
-          title: TextFormField(
+          title: BiTextFormField(
               initialValue: page.name,
               onChanged: (value) => page.name = value),
           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-            SizedBox(width: 30, child: TextFormField(
+            SizedBox(width: 30, child: BiTextFormField(
                 decoration: const InputDecoration(label: Icon(Icons.timer_outlined)),
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 initialValue: (page.timeout??'').toString(),
                 onChanged: (value) => page.timeout = int.tryParse(value))),
-            IconButton(icon: const Icon(Icons.copy), onPressed: () {_copyPage(p, page);}),
+            IconButton(icon: const Icon(Icons.content_copy), onPressed: () {_copyPage(p, page);}),
             IconButton(icon: const Icon(Icons.delete), onPressed: () {_deletePage(p);}),
             ReorderableDragStartListener(index: p, child: const Icon(Icons.drag_handle))
           ])
@@ -90,12 +90,15 @@ class _EditPagesState extends State<EditPagesPage> {
   }
 
   Future<void> _deletePage(int pageNum) async {
-    if(await widget._controller.askToConfirm(context, 'Delete page "${widget._controller._settings?.pages[pageNum].name}"', alwaysAsk: true)) {
+    _Settings s = widget._controller._settings!;
+
+    if(await widget._controller.askToConfirm(context, 'Delete page "${s.pages[pageNum].name}"', alwaysAsk: true)) {
       setState(() {
-        widget._controller._settings?.pages.removeAt(pageNum);
-        if (widget._controller._settings!.pages.isEmpty) {
-          widget._controller._settings?.pages.add(_Page._newPage());
+        s.pages.removeAt(pageNum);
+        if (s.pages.isEmpty) {
+          s.pages.add(_Page._newPage());
         }
+        if(widget._controller._pageNum >= s.pages.length) widget._controller._pageNum = s.pages.length-1;
       });
     }
   }
@@ -130,6 +133,7 @@ class _SettingsState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    bool isLinux = Platform.isLinux;
     _Settings settings = widget._controller._settings!;
     final themeProvider = Provider.of<ThemeProvider>(context);
 
@@ -170,7 +174,7 @@ class _SettingsState extends State<SettingsPage> {
               settings.keepAwake = value;
             });
           }),
-      SwitchListTile(title: const Text("Show Brightness Controls:"),
+      if(!isLinux) SwitchListTile(title: const Text("Show Brightness Controls:"),
           value: settings.brightnessControl,
           onChanged: widget._controller._noBrightnessControls ? null : (bool value) {
             setState(() {
@@ -221,19 +225,19 @@ class _SettingsState extends State<SettingsPage> {
             }),
       ),
       ListTile(
-          leading: const Text("Speed:      "),
+          leading: const Text("Speed:       "),
           title: EnumDropdownMenu(SpeedUnits.values, widget._controller._settings?.speedUnits, (v) {widget._controller._settings?.speedUnits = v!;})
       ),
       ListTile(
-          leading: const Text("Wind Speed: "),
+          leading: const Text("Wind Speed:  "),
           title: EnumDropdownMenu(SpeedUnits.values, widget._controller._settings?.windSpeedUnits, (v) {widget._controller._settings?.windSpeedUnits = v!;})
       ),
       ListTile(
-          leading: const Text("Depth:      "),
+          leading: const Text("Depth:       "),
           title: EnumDropdownMenu(DepthUnits.values, widget._controller._settings?.depthUnits, (v) {widget._controller._settings?.depthUnits = v!;})
       ),
       ListTile(
-          leading: const Text("Temperature:"),
+          leading: const Text("Temperature: "),
           title: EnumDropdownMenu(TemperatureUnits.values, widget._controller._settings?.temperatureUnits, (v) {widget._controller._settings?.temperatureUnits = v!;})
       ),
       ListTile(
@@ -245,18 +249,18 @@ class _SettingsState extends State<SettingsPage> {
           title: EnumDropdownMenu(OilPressureUnits.values, widget._controller._settings?.oilPressureUnits, (v) {widget._controller._settings?.oilPressureUnits = v!;})
       ),
       ListTile(
-          leading: const Text("Capacities:"),
+          leading: const Text("Capacities:  "),
           title: EnumDropdownMenu(CapacityUnits.values, widget._controller._settings?.capacityUnits, (v) {widget._controller._settings?.capacityUnits = v!;})
       ),
       ListTile(
-          leading: const Text("Fluid Rate:"),
+          leading: const Text("Fluid Rate:  "),
           title: EnumDropdownMenu(FluidRateUnits.values, widget._controller._settings?.fluidRateUnits, (v) {widget._controller._settings?.fluidRateUnits = v!;})
       ),
       ListTile(
           leading: const Text("Port/Starboard Colours:"),
           title: EnumDropdownMenu(PortStarboardColors.values, widget._controller._settings?.portStarboardColors, (v) {widget._controller._settings?.portStarboardColors = v!;})
       ),
-      _Divider('Signalk'), //=====================================================
+      _Divider('SignalK'), //=====================================================
       SwitchListTile(title: const Text("Auto Discover:"),
           value: settings.discoverServer,
           onChanged: settings.demoMode ? null : (bool value) {
@@ -266,7 +270,7 @@ class _SettingsState extends State<SettingsPage> {
           }),
       ListTile(
           leading: const Text("URL:"),
-          title: TextFormField(enabled: (!settings.discoverServer && !settings.demoMode),
+          title: BiTextFormField(enabled: (!settings.discoverServer && !settings.demoMode),
               decoration: const InputDecoration(hintText: 'http://mypi.local:3000'),
               initialValue: settings.signalkUrl,
               onChanged: (value) => settings.signalkUrl = value),
@@ -281,7 +285,7 @@ class _SettingsState extends State<SettingsPage> {
           }),
       ListTile(
           leading: const Text("Subscription Min Period:"),
-          title: TextFormField(
+          title: BiTextFormField(
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               initialValue: settings.signalkMinPeriod.toString(),
@@ -290,7 +294,7 @@ class _SettingsState extends State<SettingsPage> {
       ),
       ListTile(
           leading: const Text("Connection Timeout:"),
-          title: TextFormField(
+          title: BiTextFormField(
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               initialValue: settings.signalkConnectionTimeout.toString(),
@@ -299,7 +303,7 @@ class _SettingsState extends State<SettingsPage> {
       ),
       ListTile(
           leading: const Text("Real-time Data Timeout:"),
-          title: TextFormField(
+          title: BiTextFormField(
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               initialValue: settings.realTimeDataTimeout.toString(),
@@ -308,12 +312,49 @@ class _SettingsState extends State<SettingsPage> {
       ),
       ListTile(
           leading: const Text("Infrequent Data Timeout:"),
-          title: TextFormField(
+          title: BiTextFormField(
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               initialValue: settings.infrequentDataTimeout.toString(),
               onChanged: (value) => settings.infrequentDataTimeout = int.parse(value)),
           trailing: const Text('ms')
+      ),
+      _Divider('Authentication'), //=====================================================
+      ListTile(
+          leading: const Text("App ID:"),
+          title: BiTextFormField(
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(idChars))],
+            initialValue: settings.clientID,
+            onChanged: (value) => settings.clientID = value)
+      ),
+      ListTile(
+          leading: const Text("Group ID:"),
+          title: BiTextFormField(
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(idChars))],
+            initialValue: settings.groupID,
+            onChanged: (value) => settings.groupID = value),
+      ),
+      ListTile(
+            leading: const Text("Supplemental Group IDs:"),
+            title: Text(settings.supplementalGroupIDs.isEmpty?'':settings.supplementalGroupIDs.reduce((one, two) {return '$one, $two';})),
+            trailing: IconButton(onPressed: _editGroups, icon: Icon(Icons.edit)),
+      ),
+      SwitchListTile(title: const Text("Allow Remote Control:"),
+          value: settings.allowRemoteControl,
+          onChanged: (bool value) {
+            setState(() {
+              settings.allowRemoteControl = value;
+            });
+          }),
+      ListTile(
+          leading: const Text("Request Auth Token:"),
+          title: IconButton(onPressed: _requestAuthToken, icon: const Icon(Icons.login)),
+          trailing: IconButton(onPressed: _showAuthHelpPage, icon: const Icon(Icons.help)),
+      ),
+      ListTile(
+          leading: const Text("Auth Token:"),
+          title: Text(settings.authToken),
+          trailing: IconButton(onPressed: _deleteAuthToken, icon: const Icon(Icons.delete))
       ),
       _Divider('Advanced'), //=====================================================
       ListTile(
@@ -353,16 +394,34 @@ class _SettingsState extends State<SettingsPage> {
         context: context,
         title: const Text("Settings"),
         actions: [
-          if(widget._controller._enableExit) IconButton(tooltip: 'Exit', icon: const Icon(Icons.power_settings_new), onPressed: _exit),
-          IconButton(tooltip: 'Export', icon: const Icon(Icons.share), onPressed: _share),
+
+          if(widget._controller._enablePoweroff) IconButton(tooltip: 'Poweroff', icon: const Icon(Icons.power_settings_new), onPressed: _poweroff),
+          if(widget._controller._enableExit) IconButton(tooltip: 'Exit', icon: const Icon(Icons.exit_to_app), onPressed: _exit),
+          if(!isLinux) IconButton(tooltip: 'Export', icon: const Icon(Icons.share), onPressed: _share),
           IconButton(tooltip: 'Import', icon: const Icon(Icons.file_open), onPressed: _import),
           IconButton(tooltip: 'Subscriptions', icon: const Icon(Icons.mediation),onPressed: _showPathSubscriptions),
           IconButton(tooltip: 'Help', icon: const Icon(Icons.help), onPressed: _showHelpPage),
-          IconButton(tooltip: 'Log', icon: const Icon(Icons.notes),onPressed: () {LogDisplay.show(context);})
+          IconButton(tooltip: 'Log', icon: const Icon(Icons.notes),onPressed: () {LogDisplay.show(context, widget._controller);})
         ],
       ),
       body: ListView(children: list)
     );
+  }
+
+  Future<void> _poweroff () async {
+    var c = widget._controller;
+
+    if(await c.askToConfirm(context, 'Poweroff?', alwaysAsk: true)) {
+      try {
+        var r = await Process.run('/usr/bin/sudo', ['/usr/sbin/poweroff']);
+
+        if(r.exitCode != 0) {
+          c.l.e('Failed to poweroff, exit code ${r.exitCode} output "${r.stdout}" error "${r.stderr}"');
+        }
+      } catch (e) {
+        c.l.e('Exception trying to poweroff', error: e);
+      }
+    }
   }
 
   Future<void> _exit () async {
@@ -372,7 +431,15 @@ class _SettingsState extends State<SettingsPage> {
   Future<void> _showHelpPage () async {
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) {
-      return _HelpPage();
+      return HelpPage(url: mainHelpURL);
+    })
+    );
+  }
+
+  Future<void> _showAuthHelpPage () async {
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (context) {
+      return HelpPage(url: 'doc:authentication.md');
     })
     );
   }
@@ -405,8 +472,48 @@ class _SettingsState extends State<SettingsPage> {
   void _editHttpHeaders () async {
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) {
-      return _EditHttpHeaders(widget._controller._settings!.httpHeaders);
+      return _EditHttpHeaders(widget._controller, widget._controller._settings!.httpHeaders);
     }));
+  }
+
+  void _editGroups () async {
+    List<String> groupsList = widget._controller._settings!.supplementalGroupIDs.toList();
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (context) {
+      return _EditSupplementaryGroups(groupsList);
+    }));
+
+    setState(() {
+      // We remove any empty and duplicate groups.
+      groupsList.removeWhere((g) => g.isEmpty);
+      widget._controller._settings!.supplementalGroupIDs = groupsList.toSet();
+    });
+  }
+
+  void _requestAuthToken() async {
+    SignalKAuthorization(widget._controller).request(widget._controller._settings!.clientID, "Boat Instrument",
+            (authToken) {
+          setState(() {
+            widget._controller._settings!.authToken = authToken;
+          });
+        },
+            (msg) {
+          if (mounted) {
+            setState(() {
+              widget._controller._settings!.authToken = msg;
+            });
+          }
+        });
+
+    setState(() {
+      widget._controller._settings!.authToken = 'PENDING - keep this page open until request approved';
+    });
+  }
+
+  void _deleteAuthToken()  {
+    setState(() {
+      widget._controller._settings!.authToken = '';
+    });
   }
 }
 
@@ -419,7 +526,15 @@ class _PathSubscriptionsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     List<ListTile> list = [];
 
+    list.add(const ListTile(title: Text('Data Subscriptions', textAlign: TextAlign.center)));
+
     for(var path in _controller.paths) {
+      list.add(ListTile(dense: true, leading: Text(path)));
+    }
+
+    list.add(const ListTile(title: Text('Control Subscriptions', textAlign: TextAlign.center)));
+
+    for(var path in _controller.controlPaths) {
       list.add(ListTile(dense: true, leading: Text(path)));
     }
 
@@ -439,9 +554,10 @@ class _PathSubscriptionsPage extends StatelessWidget {
 }
 
 class _EditHttpHeaders extends StatefulWidget {
+  final BoatInstrumentController _controller;
   final List<_HttpHeader> _httpHeaders;
 
-  const _EditHttpHeaders(this._httpHeaders);
+  const _EditHttpHeaders(this._controller, this._httpHeaders);
 
   @override
   createState() => _EditHttpHeadersState();
@@ -455,23 +571,23 @@ class _EditHttpHeadersState extends State<_EditHttpHeaders> {
     List<Widget> headerList = [];
     for(int h=0; h<widget._httpHeaders.length; ++h) {
       var header = widget._httpHeaders[h];
+      headerList.add(Divider(thickness: 3, color: Theme.of(context).colorScheme.secondary));
       headerList.add(ListTile(key: UniqueKey(),
           title: Column(children: [
-            TextFormField(
+            BiTextFormField(
               decoration: const InputDecoration(hintText: 'name'),
               initialValue: header.name,
               onChanged: (value) => header.name = value),
-            TextFormField(
+            BiTextFormField(
               decoration: const InputDecoration(hintText: 'value'),
               initialValue: header.value,
               onChanged: (value) => header.value = value)
           ]),
           trailing: IconButton(icon: const Icon(Icons.delete), onPressed: () {_deleteHeader(h);})
       ));
-      headerList.add(Divider(thickness: 3, color: Theme.of(context).colorScheme.secondary));
     }
 
-    return Scaffold(
+    return PopScope(canPop: false, onPopInvokedWithResult: (didPop, result) {if(didPop) return; _checkHeaders();}, child: Scaffold(
         appBar: AppBar(
           title: const Text("HTTP Headers"),
           actions: [
@@ -479,7 +595,15 @@ class _EditHttpHeadersState extends State<_EditHttpHeaders> {
           ],
         ),
         body: ListView(children: headerList)
-    );
+    ));
+  }
+
+  void _checkHeaders () {
+    if(widget._httpHeaders.every((h) {return h.name.isNotEmpty;})) {
+      Navigator.pop(context);
+    } else {
+      widget._controller.showMessage(context, 'Header Names cannot be blank');
+    }
   }
 
   void _addHeader() {
@@ -493,4 +617,8 @@ class _EditHttpHeadersState extends State<_EditHttpHeaders> {
       widget._httpHeaders.removeAt(headerNum);
     });
   }
+}
+
+class _EditSupplementaryGroups extends EditListWidget {
+  const _EditSupplementaryGroups(List<String> list) : super(list, 'Supplementary Groups', 'Group ID', restrictChars: true);
 }

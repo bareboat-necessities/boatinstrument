@@ -9,17 +9,40 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:boatinstrument/boatinstrument_controller.dart';
 import 'package:flutter_fullscreen/flutter_fullscreen.dart';
+import 'package:flutter_onscreen_keyboard/flutter_onscreen_keyboard.dart';
 import 'package:provider/provider.dart';
-import 'package:screen_brightness/screen_brightness.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:path_provider/path_provider.dart' as path_provider;
 import 'theme_provider.dart';
 
+class BiDesktopKeyboardLayout extends DesktopKeyboardLayout {
+  final MediaQuery _media;
+
+  BiDesktopKeyboardLayout(this._media);
+
+  @override
+  double get aspectRatio {return _media.data.size.aspectRatio*2;}
+}
+
 void main(List<String> cmdlineArgs) {
+  FlutterError.onError = logError;
+
   List<String> args = (Platform.environment['BOAT_INSTRUMENT_ARGS']??'').split(RegExp(r'\s+')) + cmdlineArgs;
 
   WidgetsFlutterBinding.ensureInitialized();
   
   runApp(ChangeNotifierProvider(create: (context) => ThemeProvider(), child: BoatInstrumentApp(args)));
+}
+
+void logError(FlutterErrorDetails details) async {
+  FlutterError.dumpErrorToConsole(details);
+  String errorStr = '${details.exceptionAsString()}\n${details.stack}';
+  CircularLogger().e(errorStr);
+  Directory directory = await path_provider.getApplicationDocumentsDirectory();
+  File('${directory.path}/boatinstrument-error.log').writeAsStringSync(
+    '${DateTime.now()}\n$errorStr\n',
+    mode: FileMode.append,
+    flush: true);
 }
 
 class BoatInstrumentApp extends StatelessWidget {
@@ -37,7 +60,9 @@ class BoatInstrumentApp extends StatelessWidget {
     const noFullScreen = 'no-full-screen';
     const readOnly = 'read-only';
     const enableExit = 'enable-exit';
+    const enablePoweroff = 'enable-poweroff';
     const enableSetTime = 'enable-set-time';
+    const keyboard = 'keyboard';
     const configFile = 'config-file';
 
     final p = ArgParser()
@@ -47,7 +72,9 @@ class BoatInstrumentApp extends StatelessWidget {
                 ..addFlag(noFullScreen, negatable: false)
                 ..addFlag(readOnly, negatable: false)
                 ..addFlag(enableExit, negatable: false)
+                ..addFlag(enablePoweroff, negatable: false)
                 ..addFlag(enableSetTime, negatable: false)
+                ..addFlag(keyboard, negatable: false)
                 ..addOption(configFile,
                     defaultsTo: 'boatinstrument.json',
                     valueHelp: 'filename',
@@ -60,6 +87,12 @@ class BoatInstrumentApp extends StatelessWidget {
       }
 
       return MaterialApp(
+        builder: (context, child) {
+          var mq = MediaQuery(data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true), child: child!);
+          return OnscreenKeyboard(
+            layout: BiDesktopKeyboardLayout(mq),
+            child: mq
+          );},
         home: MainPage(
           r.flag(noAudio),
           r.flag(noBrightnessCtrl),
@@ -67,7 +100,9 @@ class BoatInstrumentApp extends StatelessWidget {
           r.flag(noFullScreen),
           r.flag(readOnly),
           r.flag(enableExit),
+          r.flag(enablePoweroff),
           r.flag(enableSetTime),
+          r.flag(keyboard),
           r.option(configFile)!),
         theme:  Provider.of<ThemeProvider>(context).themeData
       );
@@ -86,55 +121,46 @@ class MainPage extends StatefulWidget {
   final bool noFullScreen;
   final bool readOnly;
   final bool enableExit;
+  final bool enablePoweroff;
   final bool enableSetTime;
   final String configFile;
 
-  const MainPage(
+  MainPage(
     this.noAudio,
     this.noBrightnessControl,
     this.noKeepAwake,
     this.noFullScreen,
     this.readOnly,
     this.enableExit,
+    this.enablePoweroff,
     this.enableSetTime,
+    bool keyboard,
     this.configFile,
-    {super.key});
+    {super.key}) {
+      embeddedKeyboard = keyboard;
+    }
 
   @override
-  State<MainPage> createState() => _MainPageState();
+  State<MainPage> createState() => MainPageState();
 }
 
-class _MainPageState extends State<MainPage> {
+class MainPageState extends State<MainPage> {
   static const Image _icon = Image(image: AssetImage('assets/icon.png'));
 
   late final ThemeProvider _themeProvider;
-  static const _brightnessStep = 4;
-  static const _brightnessMax = 12;
-  static final Map<int, IconData> _brightnessIcons = {
-    12: Icons.brightness_high,
-    8: Icons.brightness_medium,
-    4: Icons.brightness_low,
-    1: Icons.brightness_4_outlined,
-    0: Icons.brightness_4_outlined
-  };
 
   bool _showAppBar = false;
-  int _brightness = _brightnessMax;
-  bool _rotatePages = false;
-  Timer? _pageTimer;
   Offset _panStart = Offset.zero;
   bool fullScreen = (Platform.isIOS || Platform.isAndroid) ? true : false;
 
   late final BoatInstrumentController _controller;
-  int _pageNum = 0;
-  int? _pageTimeout = 0;
 
   @override
   void initState() {
     super.initState();
 
     _themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    _controller = BoatInstrumentController(widget.noAudio, widget.noBrightnessControl, widget.enableExit, widget.enableSetTime);
+    _controller = BoatInstrumentController(this, widget.noAudio, widget.noBrightnessControl, widget.enableExit, widget.enablePoweroff, widget.enableSetTime);
   }
 
   Future<void> _configure () async {
@@ -144,19 +170,16 @@ class _MainPageState extends State<MainPage> {
 
     _themeProvider.setDarkMode(_controller.darkMode);
 
-    if(_controller.brightnessControl) {
-      // Convert the current system brightness into the closest step, rounding up.
-      // Note: We add the step as well as _setBrightness() will remove it.
-      _brightness = (await ScreenBrightness().system * _brightnessMax).ceil();
-      _brightness =
-          _brightness - (_brightness % _brightnessStep) + (_brightnessStep * 2);
-      _setBrightness();
-    }
-
+    _controller.stepBrightness(init: true);
+    
     if(_controller.pageTimerOnStart) {
-      _togglePageTimer();
+      _controller.toggleRotatePages();
     }
 
+    rebuild();
+  }
+
+  void rebuild() {
     setState(() {});
   }
 
@@ -177,16 +200,16 @@ class _MainPageState extends State<MainPage> {
         actionsPercent: 0.5,
         context: context,
         leading: BackButton(onPressed: () {setState(() {_showAppBar = false;});}),
-        title: Text(_controller.pageName(_pageNum)),
+        title: Text(_controller.pageName()),
         actions: [
           if(!widget.noFullScreen) IconButton(tooltip: '${fullScreen ? 'Exit ':''}Full Screen', icon: Icon(fullScreen ? Icons.fullscreen_exit : Icons.fullscreen), onPressed: _toggleFullScreen),
           if(_controller.muted) IconButton(tooltip: 'Unmute', icon: const Icon(Icons.volume_off), onPressed: _unmute),
-          IconButton(tooltip: 'Night Mode', icon: const Icon(Icons.mode_night), onPressed:  _nightMode),
-          IconButton(tooltip: 'Auto Page', icon: _rotatePages ? const Icon(Icons.sync_alt) : const Stack(children: [Icon(Icons.sync_alt), Icon(Icons.close)]), onPressed:  _togglePageTimer),
-          if(_controller.brightnessControl) IconButton(tooltip: 'Brightness', icon: Icon(_brightnessIcons[_brightness]), onPressed: _setBrightness),
+          IconButton(tooltip: 'Night Mode', icon: const Icon(Icons.mode_night), onPressed:  nightMode),
+          IconButton(tooltip: 'Auto Rotate Pages', icon: _controller.arePagesRotating ? const Icon(Icons.sync_alt) : const Stack(children: [Icon(Icons.sync_alt), Icon(Icons.close)]), onPressed:  _controller.toggleRotatePages),
+          if(_controller.brightnessControl) IconButton(tooltip: 'Brightness', icon: Icon(_controller.brightnessIcon), onPressed: _controller.stepBrightness),
           if(_controller.notifications.isNotEmpty) IconButton(tooltip: 'Notifications', icon: Icon(Icons.format_list_bulleted), onPressed: _showNotifications),
           if(!widget.readOnly) IconButton(tooltip: 'Edit Pages', icon: const Icon(Icons.web), onPressed: _showEditPagesPage),
-          if(widget.readOnly) IconButton(tooltip: 'Log', icon: const Icon(Icons.notes),onPressed: () {LogDisplay.show(context);})
+          if(widget.readOnly) IconButton(tooltip: 'Log', icon: const Icon(Icons.notes),onPressed: () {LogDisplay.show(context, _controller);})
         ]
       );
     }
@@ -209,25 +232,18 @@ class _MainPageState extends State<MainPage> {
             _displayAppBar(diff.dy);
           }
         },
-        child: _controller.buildPage(_pageNum),
+        child: _controller.buildPage(),
       )),
     );
   }
 
-  void _setBrightness() {
-    setState(() {
-      _brightness = ((_brightness < _brightnessStep) || (_brightness > _brightnessMax)) ? _brightnessMax : _brightness - _brightnessStep;
-      if(Platform.isMacOS && _brightness == 0) {
-        _brightness = 1;
-      }
-    });
-
-    ScreenBrightness().setApplicationScreenBrightness(_brightness/_brightnessMax);
-  }
-
-  void _nightMode() {
+  void nightMode({bool? on}) {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    themeProvider.toggleNightMode(_controller.darkMode);
+    if(on == null) {
+      themeProvider.toggleNightMode(_controller.darkMode);
+    } else {
+      themeProvider.setNightMode(_controller.darkMode, on);
+    }
   }
 
   void _unmute() {
@@ -243,48 +259,6 @@ class _MainPageState extends State<MainPage> {
     });
   }
 
-  void _togglePageTimer() {
-    setState(() {
-      _rotatePages = !_rotatePages;
-    });
-
-    if(_rotatePages) {
-      // Initially get it going.
-      _pageTimeout = _pageTimeout??0;
-    }
-
-    _startPageTimer();
-  }
-
-  void _startPageTimer() {
-    _stopPageTimer();
-
-    if(_pageTimeout == null) {
-      _rotatePages = false;
-    }
-
-    if(_rotatePages) {
-      _pageTimer = Timer(Duration(seconds: _pageTimeout!), _rotatePage);
-    }
-  }
-
-  void _stopPageTimer() {
-    _pageTimer?.cancel();
-    _pageTimer = null;
-  }
-
-  void _rotatePage() {
-    int pageNum;
-    int? timeout;
-    setState(() {
-      (pageNum, timeout) = _controller.rotatePageNum(_pageNum);
-      _pageNum = pageNum;
-      _pageTimeout = timeout;
-    });
-
-    _startPageTimer();
-  }
-
   void _showNotifications () async {
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) {
@@ -297,7 +271,7 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<void> _showEditPagesPage () async {
-    _stopPageTimer();
+    _controller.stopPageTimer();
 
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) {
@@ -310,32 +284,23 @@ class _MainPageState extends State<MainPage> {
 
     setState(() {
       _showAppBar = false;
-      if(_pageNum >= _controller.numOfPages) {
-        _pageNum = _controller.numOfPages-1;
-      }
     });
 
-    _startPageTimer();
+    _controller.startPageTimer();
   }
 
   void _movePage (double direction) {
-    _startPageTimer();
+    _controller.startPageTimer();
 
-    int newPage = 0;
     if (direction > 0.0) {
-      newPage = _controller.prevPageNum(_pageNum);
+      _controller.prevPage();
     } else {
-      newPage = _controller.nextPageNum(_pageNum);
-    }
-    if(newPage != _pageNum) {
-      setState(() {
-        _pageNum = newPage;
-      });
+      _controller.nextPage();
     }
   }
 
   void _displayAppBar (double direction) async {
-    _startPageTimer();
+    _controller.startPageTimer();
 
     bool showAppBar = false;
     if(direction > 0.0) {

@@ -1,3 +1,50 @@
+  * 0.9.0 When adding HTTP headers, we now make sure the names are not blank
+            as that causes connection errors.
+          The Autopilot Boxes now recognise an HTTP 202 (Accepted) as a good status.
+            The latest signalk-autopilot plugin now returns 202s.
+          Added back the change log.
+
+          New Boxes:
+            Autopilot Reefing Control
+            Log, Total and Trip. Thanks to Mike K for the suggestion.
+            Custom App Launcher, Thanks to Mikhail G for the idea.
+
+          Box updates:
+            SunlightBox: now aligned at top.
+  * 0.8.0 We now handle data timeouts on a per-path basis. This allows one
+            value in a multi-value Box to timeout, e.g. WPT Bearing in the CompassRoseBox.
+          Help can now be written in Markdown. This allow easier formatting and linking.
+          Added Remote Control functionality.
+          When editing pages, hitting the Android Back button now prompts to discard changes.
+          Authentication is now handled at the application level rather than per-box.
+          You can now export backup configs and log files.
+          Added commandline arguments for:
+            --enable-poweroff - Enables a Poweroff button on the setting page.
+            --keyboard - enables an embedded onscreen keyboard
+          In Demo mode we don't add any HTTP headers, as this can stop the connection.
+          Brightness controls are disabled on Linux as there's no implementation.
+
+          New Boxes:
+            Remote Control
+            Compass Rose
+            Compass Gauge
+            Starlink
+            Timers
+            Stopwatch
+            Sailor Hat
+
+          Box updates:
+            Degree values are now marked with a degrees symbol rather than 'deg'.
+            Temperature unit now show degrees symbol.
+            Moon Box now renders text with a boarder to make the text more visible.
+            PositionBox: the lat/long format is now a single string to allow for
+              more flexibility.
+            AnchorAlarmBox: added wind angle.
+            NextPointBearingBox: removed smoothing.
+            NextPointTimeToGoBox: the heading will now scroll if it is long and
+              the value is subject to smoothing.
+            Sunlight/Moon Boxes now handle null values per-path.
+            Electrical Boxes now flag there data as Infrequent.
   * 0.7.0 Application time is now taken from the SignalK server. This ensures
             timestamps are handled correctly even on devices not correctly
             time synchronised.

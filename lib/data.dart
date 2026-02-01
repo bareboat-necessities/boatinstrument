@@ -1,11 +1,20 @@
 part of 'boatinstrument_controller.dart';
 
-const String degreesUnits = 'deg';
+const String bi = 'boatinstrument';
+const String degreesSymbol = '\u00B0'; // degrees symbol.
+const String degreesUnits = '${degreesSymbol}T'; // degrees symbol.
+const String deltaChar = '\u0394';
 const double kelvinOffset = 273.15;
+const String mainHelpURL = 'doc:help.md';
+const String idChars = '[0-9a-zA-Z_-]';
+const double pad = 5.0;
+
+bool embeddedKeyboard = false;
 
 int rad2Deg(double? rad) => ((rad??0) * vm.radians2Degrees).round();
 double deg2Rad(int? deg) => (deg??0) * vm.degrees2Radians;
 String val2PS(num val) => val < 0 ? 'P' : (val > 0) ? 'S' : '';
+String val2PSString(num val) => val < 0 ? 'Port' : (val > 0) ? 'Starboard' : '';
 double revolutions2RPM(double rev) => rev * 60;
 double rpm2Revolutions(double rpm) => rpm / 60;
 double kts2ms(double kts) => kts / 1.943844;
@@ -13,6 +22,32 @@ double ms2kts(double kts) => kts * 1.943844;
 double millibar2pascal (double millibar) => millibar / 0.01;
 double nm2m (double nm) => nm / 0.000539957;
 double m2nm (double m) => m * 0.000539957;
+String rad2Cardinal(double? direction) {
+  const List<String> cardinalDirections = [
+    'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S',
+    'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW', 'N'
+  ];
+  const f = (2*m.pi)/16;
+
+  return  (direction == null) ? '-' : cardinalDirections[((direction+(f/2))/f).toInt()];
+}
+String duration2HumanString (Duration d) {
+  List<String> parts = d.toString().split(':');
+  int hours = int.parse(parts[0]);
+  int days = hours~/24;
+  if(days.abs() > 0) {
+    return '${days}d${hours%24}h';
+  } else if(hours.abs() > 0) {
+    return '${hours}h${parts[1]}m';
+  }
+  int s = double.parse(parts[2]).round();
+  return fmt.format('${parts[1]}m{:02d}s', s);
+}
+String duration2String(Duration d) {
+  List<String> parts = d.toString().split(':');
+  int s = double.parse(parts[2]).round();
+  return fmt.format('{}:{}:{:02d}', parts[0], parts[1], s);
+}
 
 double averageAngle(double current, double next, { int smooth = 1, bool relative=false }) {
   vm.Vector2 v1 = vm.Vector2(m.sin(current) * smooth, m.cos(current) * smooth);
@@ -32,8 +67,7 @@ double averageDouble(double current, double next, { int smooth = 1 }) {
 // Assumption is that the font characters are higher than they are wide.
 // NOTE: the style MUST have the height set to 1.0.
 double maxFontSize(String text, TextStyle style, double availableHeight, double availableWidth) {
-  //TODO Haven't worked out why the "- 1.0" is required.
-  double fontSize = availableHeight - 1.0;
+  double fontSize = availableHeight;
   // The size must be greater than 0 to avoid rendering errors.
   fontSize = (fontSize > 0.0) ? fontSize : 1.0;
 
@@ -76,6 +110,46 @@ void _dynamic2String(dynamic d, StringBuffer s) {
         s.write('$k: ${d[k]} ');
       }
     }
+  }
+}
+
+class AwesomeFontDropdownMenu extends StatefulWidget {
+  final String _initialValue;
+  final ValueChanged<String> _onSelected;
+
+  const AwesomeFontDropdownMenu(this._initialValue, this._onSelected, {super.key});
+
+  @override
+  State<AwesomeFontDropdownMenu> createState() => _AwesomeFontDropdownMenuState();
+}
+
+class _AwesomeFontDropdownMenuState extends State<AwesomeFontDropdownMenu> {
+  static List<DropdownMenuEntry<String>>? _menuEntries;
+
+  @override
+  Widget build(BuildContext context) {
+    const ts = TextStyle(fontFamily: 'Awesome', fontSize: 30);
+
+    _menuEntries ??= awesomeFontData.keys.map<DropdownMenuEntry<String>>((String v) {return DropdownMenuEntry<String>(
+      style: const ButtonStyle(backgroundColor: WidgetStatePropertyAll<Color>(Colors.grey), textStyle: WidgetStatePropertyAll<TextStyle>(ts)),
+      value: v,
+      label: String.fromCharCode(awesomeFontData[v]??0));}).toList();
+
+    return DropdownMenu<String>(
+      textStyle: ts,
+      expandedInsets: EdgeInsets.zero,
+      enableSearch: false,
+      enableFilter: true,
+      filterCallback: (List<DropdownMenuEntry<String>>entries, String search) {
+        return entries.where((entry) => entry.value.contains(search)).toList();
+      },
+      requestFocusOnTap: true,
+      initialSelection: widget._initialValue,
+      dropdownMenuEntries: _menuEntries!,
+      onSelected: (value) {
+        widget._onSelected(value??'');
+      },
+    );
   }
 }
 
@@ -176,7 +250,7 @@ class _SignalkPathDropdownMenuState extends State<SignalkPathDropdownMenu> {
        widget._onSelected(iv);
     }
 
-    DropdownMenu menu = DropdownMenu<String>(
+    return DropdownMenu<String>(
       expandedInsets: EdgeInsets.zero,
       enableSearch: false,
       enableFilter: widget.searchable,
@@ -190,8 +264,6 @@ class _SignalkPathDropdownMenuState extends State<SignalkPathDropdownMenu> {
         widget._onSelected(value??'');
       },
     );
-
-    return menu;
   }
 }
 
@@ -224,19 +296,31 @@ class BoxWidgetConfig {
   BoxWidgetConfig(this.controller, this.settings, this.constraints, this.editMode);
 }
 
-class HelpTextWidget extends StatelessWidget {
+class HeaderText extends StatelessWidget {
   final String _text;
+  final TextAlign? textAlign;
+  final bool scrolling;
 
-  const HelpTextWidget(this._text, {super.key});
+  const HeaderText(this._text, {this.textAlign, this.scrolling = false, super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ListView(children: [ListTile(title: Text(_text))],);
-  }
-}
+    TextStyle ts = Theme.of(context).textTheme.titleMedium!;
 
-class HeaderText extends Text {
-  const HeaderText(super.text, {super.style, super.textAlign, super.key}) : super(softWrap: false, overflow: TextOverflow.ellipsis);
+    if(scrolling) {
+      return TextScroll(
+        _text,
+        style: ts,
+        textAlign: textAlign,
+        mode: TextScrollMode.bouncing,
+        pauseOnBounce: const Duration(seconds: 2),
+        pauseBetween: const Duration(seconds: 2),
+        velocity: const Velocity(pixelsPerSecond: Offset(10, 0))
+      );
+    }
+
+    return Text(_text, style: ts, textAlign: textAlign, softWrap: false, overflow: TextOverflow.ellipsis);
+  }
 }
 
 abstract class BoxWidget extends StatefulWidget {
@@ -270,46 +354,122 @@ abstract class BoxWidget extends StatefulWidget {
     return null;
   }
 
-  // Provide any non-obvious help for the Box or its Settings. This could be a
-  // ListView with Icons, but for a simple text String you can wrap this in a
-  // HelpTextWidget:
+  // Provide a page for Any non-obvious help for the Box or its Settings. The HelpPage Widget
+  // can be used to display text in Markdown format: 
   // e.g.
   //   @override
-  //    Widget? getHelp(BuildContext context) => const HelpTextWidget('My simple help.');
-  Widget? getHelp(BuildContext context) => null;
+  //   Widget? getHelp(BuildContext context) => const HelpPage(text: 'My simple help.');
+  Widget? getHelp() => null;
 
-  // If the Settings are not obvious, these should return help Widgets.
-  // This would normally be a simple Text Widget.
+  // If the Settings are not obvious, these should return help page Widgets.
   Widget? getSettingsHelp() => null;
   Widget? getPerBoxSettingsHelp() => null;
 }
 
-class HeadedBoxState<T extends BoxWidget> extends State<T> {
-  static const double pad = 5.0;
+class HeadedBoxWidget extends StatelessWidget {
+  final String header;
+  final bool scrolling;
+  final List<Widget> actions;
+  final Widget body;
+  final Alignment alignment;
 
-  String header = '';
-  String text = '';
-  int lines = 1;
-  Alignment alignment = Alignment.center;
-  Color? color;
+  const HeadedBoxWidget({
+    super.key, 
+    required this.header,
+    this.scrolling = false,
+    this.actions = const [],
+    required this.body,
+    this.alignment = Alignment.center
+  });
 
   @override
   Widget build(BuildContext context) {
-    TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
-
-    double fontSize = maxFontSize(text, style,
-      (widget.config.constraints.maxHeight - style.fontSize! - (3 * pad)) / lines,
-      widget.config.constraints.maxWidth - (2 * pad));
-
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child:
-        HeaderText(header, style: style),
+      Padding(padding: const EdgeInsets.only(top: pad, left: pad, right: pad), child:
+        Row(children: [
+          Expanded(child: HeaderText(header, scrolling: scrolling)),
+          Row(children: actions)
+        ])
       ),
+      Expanded(child: Align(alignment: alignment,
+        child: Padding(padding: const EdgeInsets.all(pad),
+          child: body
+        ))
+      )
+    ]);
+  }
+}
+
+class HeadedBoxState<T extends BoxWidget> extends State<T> {
+  String header = '';
+  bool scrolling;
+  List<Widget> actions = [];
+  Widget body = Container();
+  Alignment alignment = Alignment.center;
+
+  HeadedBoxState({this.scrolling = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return HeadedBoxWidget(
+      header: header,
+      scrolling: scrolling,
+      actions: actions,
+      body: body,
+      alignment: alignment,
+    );
+  }
+}
+
+class HeadedTextBoxState<T extends BoxWidget> extends HeadedBoxState<T> {
+  static const double pad = 5.0;
+
+  String text = '';
+  Color? color;
+  Color? textBgColor;
+
+  HeadedTextBoxState({super.scrolling});
+
+  @override
+  Widget build(BuildContext context) {
+    body = MaxTextWidget(text, alignment: alignment, color: color, textBgColor: textBgColor);
+
+    return super.build(context);
+  }
+}
+
+class MaxTextWidget extends StatelessWidget {
+  final String text;
+  final Alignment alignment;
+  final Color? color;
+  final Color? textBgColor;
+  final TextDecoration? decoration;
+  final Color? backgroundColor;
+  final TextStyle? style;
+
+  const MaxTextWidget(this.text, {this.alignment = Alignment.center, this.color, this.textBgColor, this.decoration, this.backgroundColor, this.style, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      TextStyle s = (style??Theme.of(context).textTheme.titleMedium!).copyWith(height: 1.0);
+
+      double fontSize = 1;
+      if(text.isNotEmpty) {
+        int lines = LineSplitter().convert(text).length;
+        fontSize = maxFontSize(text, s,
+          constraints.maxHeight / lines,
+          constraints.maxWidth);
+      }
+
       // We need to disable the device text scaling as this interferes with our text scaling.
-      Expanded(child: Align(alignment: alignment, child: Padding(padding: const EdgeInsets.all(pad),
-          child: Text(text, textScaler: TextScaler.noScaling,
-              style: style.copyWith(fontSize: fontSize, color: color)))))
+      return Stack(alignment: alignment, children: [
+        if(textBgColor != null) Text(text, textScaler: TextScaler.noScaling,
+          style: s.copyWith(fontSize: fontSize, foreground: Paint()..style = PaintingStyle.stroke..strokeWidth = 6..color = textBgColor!)),
+        Text(text, textScaler: TextScaler.noScaling,
+          style: s.copyWith(fontSize: fontSize, color: color, decoration: decoration, backgroundColor: backgroundColor))
       ]);
+    });
   }
 }
 
@@ -377,7 +537,7 @@ class _HelpBoxState extends State<HelpBox> {
   Future<void> _showHelpPage () async {
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) {
-          return _HelpPage();
+          return HelpPage(url: mainHelpURL);
          })
     );
   }
@@ -405,6 +565,22 @@ BoxDetails getBoxDetails(String id) {
   return boxDetails[0];
 }
 
+class TimeOfDayConverter implements JsonConverter<TimeOfDay, String> {
+  static DateFormat timeFormat = DateFormat('HH:mm');
+  static String format(TimeOfDay object) => timeFormat.format(DateTime(1, 1, 1, object.hour, object.minute));
+
+  const TimeOfDayConverter();
+
+  @override
+  TimeOfDay fromJson(String json) {
+    DateTime dt = timeFormat.parse(json);
+    return TimeOfDay(hour: dt.hour, minute: dt.minute);
+  }
+
+  @override
+  String toJson(TimeOfDay object) => format(object);
+}
+
 class Update {
   final String path;
   final dynamic value;
@@ -429,7 +605,7 @@ enum SignalKDataType implements EnumMenuEntry {
   const SignalKDataType(this._displayName);
 }
 
-typedef OnUpdate = Function(List<Update>? updates);
+typedef OnUpdate = Function(List<Update> updates);
 
 class _BoxData {
   final OnUpdate? onUpdate;
@@ -437,13 +613,13 @@ class _BoxData {
   final OnUpdate? onStaticUpdate;
   final Set<String> staticPaths;
   final SignalKDataType dataType;
+  final bool onControlChannel;
   List<RegExp> regExpPaths = [];
   List<RegExp> regExpStaticPaths = [];
-  DateTime lastUpdate;
   List<Update> updates = [];
-  List<Update> staticUpdates = [];
+  final Map<String, DateTime> pathTimestamps = {};
 
-  _BoxData(this.lastUpdate, this.onUpdate, this.paths, this.onStaticUpdate, this.staticPaths, this.dataType);
+  _BoxData(this.onUpdate, this.paths, this.onStaticUpdate, this.staticPaths, this.dataType, this.onControlChannel);
 }
 
 class _Resizable {
@@ -591,9 +767,9 @@ enum DepthUnits implements EnumMenuEntry {
 }
 
 enum TemperatureUnits implements EnumMenuEntry {
-  c('Centigrade', 'C'),
-  f('Fahrenheit', 'F'),
-  k('Kelvin', 'K');
+  c('Centigrade', '\u00B0C'),
+  f('Fahrenheit', '\u00B0F'),
+  k('Kelvin', '\u00B0K');
 
   @override
   String get displayName => _displayName;
@@ -710,6 +886,11 @@ class _Settings {
   int signalkConnectionTimeout;
   int realTimeDataTimeout;
   int infrequentDataTimeout;
+  String clientID;
+  String groupID;
+  bool allowRemoteControl;
+  Set<String> supplementalGroupIDs;
+  String authToken;
   int notificationMuteTimeout; //Minutes
   bool demoMode;
   bool darkMode;
@@ -739,7 +920,7 @@ class _Settings {
   String get fileName => _store!.absolute.path;
 
   _Settings({
-    this.version = 1,
+    this.version = 2,
     this.valueSmoothing = 1,
     this.discoverServer = true,
     this.signalkUrl = '',
@@ -748,6 +929,11 @@ class _Settings {
     this.signalkConnectionTimeout = 20000,
     this.realTimeDataTimeout = 10000,
     this.infrequentDataTimeout = 90000,
+    String? clientID,
+    this.groupID = '',
+    this.allowRemoteControl = false,
+    this.supplementalGroupIDs = const {},
+    this.authToken = '',
     this.notificationMuteTimeout = 15,
     this.demoMode = false,
     this.darkMode = true,
@@ -770,8 +956,11 @@ class _Settings {
     this.fluidRateUnits = FluidRateUnits.litersPerHour,
     this.portStarboardColors = PortStarboardColors.redGreen,
     this.pages = const [],
-    widgetSettings
-  }) : boxSettings = widgetSettings??{} {
+    Map<String, dynamic>? boxSettings
+  }) :
+    boxSettings = boxSettings??{},
+    clientID = clientID??'boatinstrument-${customAlphabet('0123456789', 4)}'
+  {
     if(pages.isEmpty) {
       pages = [_Page._newPage()];
     }
@@ -804,8 +993,7 @@ class _Settings {
       dynamic data = json.decode(s);
 
       if(data['version'] == 0) {
-        l.i('Backing up configuration file');
-        f.copy('${f.path}.v0');
+        _backup(f, 'v0');
         l.i('Converting configuration from version 0 to 1');
 
         // New format for specifying SignalK server.
@@ -832,13 +1020,48 @@ class _Settings {
 
         data['version'] = 1;
       }
+      
+      if(data['version'] == 1) {
+        _backup(f, 'v1');
+        l.i('Converting configuration from version 1 to 2');
+
+        // PositionBox now combines the separate lat/long formats into one.
+        if(data['boxSettings'] != null &&
+           data['boxSettings']['navigation-position'] != null) {
+          data['boxSettings']['navigation-position'] = {
+            'format': '${data['boxSettings']['navigation-position']['latFormat']}\n${data['boxSettings']['navigation-position']['lonFormat']}'
+          };
+        }
+
+        data['version'] = 2;
+      }
+
+      if(data['version'] == 2) {
+        _backup(f, 'v2');
+        l.i('Converting configuration from version 2 to 3');
+
+        // We have migrated to a single authentication on the main connection, rather
+        // than auth pee-box type.
+        if(data['boxSettings'] != null) {
+          String authToken = '';
+          data['boxSettings'].forEach((k, d) {
+            String a = '';
+            if(authToken.isEmpty && k == 'autopilot-control') a = d['authToken'];
+            if(authToken.isEmpty && k == 'electrical-switches') a = d['authToken'];
+            // The anchor-alarm should have admin access, so is preferred.
+            if(k == 'anchor-alarm') a = d['authToken'];
+            if(a.isNotEmpty) authToken = a;
+          });
+          data['authToken'] = authToken;
+        }
+
+        data['version'] = 3;
+      }
 
       settings =_Settings.fromJson(data);
     } catch (e) {
-      var backupPath = '${f.path}.bad.${DateTime.now()}';
-      l.e('Failed to decode config. Backing up to $backupPath', error: e);
-      f.copy(backupPath);
-
+      l.e('Failed to decode config', error: e);
+       _backup(f, 'bad.${DateTime.now()}');
       rethrow;
     }
     return settings;
@@ -846,6 +1069,12 @@ class _Settings {
 
   void _save (){
     _store?.writeAsStringSync(json.encode(toJson()));
+  }
+
+  static void _backup(File f, String ext) {
+    var backupPath = '${f.path}.$ext';
+    CircularLogger().i('Backing up ${f.path} to $backupPath');
+    f.copy(backupPath);
   }
 }
 
@@ -932,8 +1161,8 @@ abstract class BackgroundData {
   double? get value => values[id];
   set value(double? value) => values[id] = value;
 
-  void processUpdates(List<Update>? updates) {
-    if(updates != null) {
+  void processUpdates(List<Update> updates) {
+    if(updates[0].value != null) {
       try {
         double next =(updates[0].value as num).toDouble();
 
@@ -999,16 +1228,17 @@ class _BackgroundDataSettingsState extends State<BackgroundDataSettingsWidget> {
 mixin DoubleValeBoxPainter {
   static const double _pad = 5.0;
 
-  void paintDoubleBox(Canvas canvas, BuildContext context, String title, String units, int minLen, int precision, double? value, Offset loc, double size) {
+  void paintDoubleBox(Canvas canvas, BuildContext context, String title, String units, int minLen, int precision, double? value, Offset loc, double size, {bool fill = true, Color? textBgColor}) {
     Color fg = Theme.of(context).colorScheme.onSurface;
     Color bg = Theme.of(context).colorScheme.surface;
     TextStyle style = Theme.of(context).textTheme.bodyMedium!.copyWith(height: 1.0);
+    TextStyle styleBg = Theme.of(context).textTheme.bodyMedium!.copyWith(height: 1.0, foreground: Paint()..color = textBgColor??Colors.black..style = PaintingStyle.stroke..strokeWidth = 6);
 
     String speedText = '-';
     if(value != null) speedText = fmt.format('{:${minLen+(precision > 0?1:0)+precision}.${precision}f}', value);
 
     Paint paint = Paint()
-      ..style = PaintingStyle.fill
+      ..style = fill ? PaintingStyle.fill : PaintingStyle.stroke
       ..color = bg
       ..strokeWidth = 2.0;
 
@@ -1021,11 +1251,27 @@ mixin DoubleValeBoxPainter {
     try {
       double fontSize = maxFontSize(speedText, style, size-(2*_pad), size-style.fontSize!-(3*_pad));
 
+      if(textBgColor != null) {
+        tp.text = TextSpan(
+            text: '$title $units',
+            style: styleBg);
+        tp.layout();
+        tp.paint(canvas, loc+const Offset(_pad,_pad));
+      }
       tp.text = TextSpan(
           text: '$title $units',
           style: style);
       tp.layout();
       tp.paint(canvas, loc+const Offset(_pad,_pad));
+
+      if(textBgColor != null) {
+        tp.text = TextSpan(
+            text: speedText,
+            style: styleBg.copyWith(fontSize: fontSize));
+        tp.layout();
+        Offset o = loc+Offset(_pad, size-fontSize-_pad);
+        tp.paint(canvas, o);
+      }
 
       tp.text = TextSpan(
           text: speedText,
@@ -1037,4 +1283,68 @@ mixin DoubleValeBoxPainter {
       tp.dispose();
     }
   }
+}
+
+abstract class EditListWidget extends StatefulWidget {
+  final List<String> _list;
+  final String _title;
+  final String _type;
+  final bool restrictChars;
+
+  const EditListWidget(this._list, this._title, this._type, {this.restrictChars = false, super.key});
+
+  @override
+  createState() => _EditListWidgetState();
+}
+
+class _EditListWidgetState extends State<EditListWidget> {
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: AppBar(
+          title: Text(widget._title),
+          actions: [
+            IconButton(tooltip: 'Add ${widget._type}', icon: const Icon(Icons.add),onPressed:  _addItem),
+          ],
+        ),
+        body: ListView.builder(itemCount: widget._list.length, itemBuilder: (context, g) {
+          return ListTile(
+            key: UniqueKey(),
+            title: BiTextFormField(
+              decoration: InputDecoration(hintText: widget._type),
+              inputFormatters: widget.restrictChars?[FilteringTextInputFormatter.allow(RegExp(idChars))]:null,
+              initialValue: widget._list[g],
+              onChanged: (value) => widget._list[g] = value),
+            trailing: IconButton(icon: const Icon(Icons.delete), onPressed: () {_deleteItem(g);})
+            );
+        })
+    );
+  }
+
+  void _addItem() {
+    setState(() {
+      widget._list.add('');
+    });
+  }
+
+  Future<void> _deleteItem(int i) async {
+    setState(() {
+      widget._list.removeAt(i);
+    });
+  }
+}
+
+class BiTextFormField extends OnscreenKeyboardTextFormField {
+  BiTextFormField({
+    super.enabled,
+    super.inputFormatters,
+    super.keyboardType,
+    super.textInputAction,
+    super.minLines,
+    super.maxLines,
+    super.decoration,
+    required super.onChanged,
+    required String initialValue,
+    super.key}) : super(enableOnscreenKeyboard: embeddedKeyboard, controller: TextEditingController(text: initialValue));
 }

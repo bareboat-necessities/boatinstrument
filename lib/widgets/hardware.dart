@@ -4,8 +4,9 @@ import 'package:boatinstrument/boatinstrument_controller.dart';
 import 'package:boatinstrument/widgets/double_value_box.dart';
 import 'package:boatinstrument/widgets/gauge_box.dart';
 import 'package:flutter/material.dart';
+import 'package:format/format.dart' as fmt;
 
-const String _help = 'Ensure the signalk-raspberry-pi-monitoring plugin is installed on signalk.';
+const String _rpiHelp = 'Ensure the **signalk-rpi-monitor** plugin is installed on SignalK.';
 
 class RPiCPUTemperatureBox extends DoubleValueBox {
   static const String sid = 'rpi-cpu-temperature';
@@ -25,7 +26,7 @@ class RPiCPUTemperatureBox extends DoubleValueBox {
   }
 
   @override
-  Widget? getHelp(BuildContext context) => const HelpTextWidget(_help);
+  Widget? getHelp() => const HelpPage(text: _rpiHelp);
 }
 
 class RPiGPUTemperatureBox extends DoubleValueBox {
@@ -46,7 +47,7 @@ class RPiGPUTemperatureBox extends DoubleValueBox {
   }
 
   @override
-  Widget? getHelp(BuildContext context) => const HelpTextWidget(_help);
+  Widget? getHelp() => const HelpPage(text: _rpiHelp);
 }
 
 class RPiCPUUtilisationBox extends DoubleValueSemiGaugeBox {
@@ -80,7 +81,7 @@ class RPiCPUUtilisationBox extends DoubleValueSemiGaugeBox {
   }
 
   @override
-  Widget? getHelp(BuildContext context) => const HelpTextWidget(_help);
+  Widget? getHelp() => const HelpPage(text: _rpiHelp);
 }
 
 class RPiMemoryUtilisationBox extends DoubleValueBarGaugeBox {
@@ -112,7 +113,7 @@ class RPiMemoryUtilisationBox extends DoubleValueBarGaugeBox {
   }
 
   @override
-  Widget? getHelp(BuildContext context) => const HelpTextWidget(_help);
+  Widget? getHelp() => const HelpPage(text: _rpiHelp);
 }
 
 class RPiSDUtilisationBox extends DoubleValueBarGaugeBox {
@@ -145,7 +146,7 @@ class RPiSDUtilisationBox extends DoubleValueBarGaugeBox {
   }
 
   @override
-  Widget? getHelp(BuildContext context) => const HelpTextWidget(_help);
+  Widget? getHelp() => const HelpPage(text: _rpiHelp);
 }
 
 class _RPiDataPainter extends CustomPainter with DoubleValeBoxPainter {
@@ -184,10 +185,10 @@ class RaspberryPiBox extends BoxWidget {
   State<StatefulWidget> createState() => _RaspberryPiBoxState();
 
   @override
-  Widget? getHelp(BuildContext context) => const HelpTextWidget(_help);
+  Widget? getHelp() => const HelpPage(text: _rpiHelp);
 }
 
-class _RaspberryPiBoxState extends State<RaspberryPiBox> with DoubleValeBoxPainter {
+class _RaspberryPiBoxState extends State<RaspberryPiBox> {
   double? _cpuTemperature;
   double? _gpuTemperature;
   double? _cpuUtilisation;
@@ -213,10 +214,10 @@ class _RaspberryPiBoxState extends State<RaspberryPiBox> with DoubleValeBoxPaint
     return Container(padding: const EdgeInsets.all(5.0), child: RepaintBoundary(child: Stack(children: stack)));
   }
 
-  void _onUpdate(List<Update>? updates) {
+  void _onUpdate(List<Update> updates) {
     BoatInstrumentController controller = widget.config.controller;
 
-    if(updates == null) {
+    if(updates[0].value == null) {
       _cpuTemperature = _gpuTemperature = _cpuUtilisation = _memoryUtilisation = null;
     } else {
       for (Update u in updates) {
@@ -239,6 +240,122 @@ class _RaspberryPiBoxState extends State<RaspberryPiBox> with DoubleValeBoxPaint
         } catch (e) {
           widget.config.controller.l.e("Error converting $u", error: e);
         }
+      }
+    }
+
+    if(mounted) {
+      setState(() {});
+    }
+  }
+}
+
+class SHRPiBox extends BoxWidget {
+  static const sid = 'shrpi';
+  @override
+  String get id => sid;
+
+  const SHRPiBox(super.config, {super.key});
+
+  @override
+  State<StatefulWidget> createState() => _SHRPiBoxState();
+
+  @override
+  Widget? getHelp() => const HelpPage(text: 'Ensure the **signalk-shrpi-monitor** plugin is installed on SignalK.');
+}
+
+class _SHRPiBoxState extends HeadedBoxState<SHRPiBox> {
+  bool? _v5Output;
+  double? _capacitorVoltage;
+  double? _inputAmps;
+  double? _inputVoltage;
+  double? _mcuTemperature;
+  String? _state;
+  bool? _watchdogEnabled;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.config.controller.configure(onUpdate: _onUpdate, paths: { 'environment.sailorhat.*' }, dataType: SignalKDataType.infrequent);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Color bg = Theme.of(context).colorScheme.surface;
+
+    if(widget.config.editMode) {
+      _v5Output = _watchdogEnabled = true;
+      _capacitorVoltage = _inputAmps = _inputVoltage = 12.3;
+      _mcuTemperature = widget.config.controller.temperatureFromDisplay(12.3);
+      _state = 'example';
+    }
+
+    header = 'SHRPi: ${_state??'-'}';
+
+    body = LayoutBuilder(builder: (context, constraints) {
+      var controller = widget.config.controller;
+      double w = constraints.maxWidth;
+      double h = constraints.maxHeight;
+      double r = 1877/1634; // Size of the image.
+
+      double iw = h*r;
+      double ih = w/r;
+
+      if(1877/w < 1634/h) {
+        ih = h;
+      } else {
+        iw = w;
+      }
+
+      return Container(padding: const EdgeInsets.all(pad), child: Stack(alignment: AlignmentGeometry.center, children: [
+        Center(child: Image(image: AssetImage('assets/shrpi.jpg'))),
+        SizedBox(width: iw, height: ih, child: MaxTextWidget(textBgColor: bg,
+
+'''  Watchdog: ${_watchdogEnabled??false?'On':'Off'}
+        
+
+     ${fmt.format('{:2.2f}', _capacitorVoltage??0.0)}v
+        
+      ${fmt.format('{:5.2f}', controller.temperatureToDisplay(_mcuTemperature??controller.temperatureFromDisplay(0.0)))}${controller.temperatureUnits.unit}
+
+
+             ${fmt.format('{:5.2f}', _inputVoltage??0.0)}v
+   ${_v5Output??false?'On ':'Off'}       ${fmt.format('{:5.2f}', _inputAmps??0.0)}a'''
+
+        ))
+      ]));
+    });
+
+    return super.build(context);
+  }
+
+  void _onUpdate(List<Update> updates) {
+    for (Update u in updates) {
+      try {
+        switch (u.path) {
+          case 'environment.sailorhat.5v_output':
+            _v5Output = u.value;
+            break;
+          case 'environment.sailorhat.capacitor.voltage':
+            _capacitorVoltage = (u.value==null)?null:(u.value as num).toDouble();
+            break;
+          case 'environment.sailorhat.input.amps':
+            _inputAmps = (u.value==null)?null:(u.value as num).toDouble();
+            break;
+          case 'environment.sailorhat.input.voltage':
+            _inputVoltage = (u.value==null)?null:(u.value as num).toDouble();
+            break;
+          case 'environment.sailorhat.mcu.temperature':
+            _mcuTemperature = (u.value==null)?null:(u.value as num).toDouble();
+            break;
+          case 'environment.sailorhat.state':
+            _state = u.value;
+            break;
+          case 'environment.sailorhat.watchdog_enabled':
+            _watchdogEnabled = u.value;
+            break;
+        }
+      } catch (e) {
+        widget.config.controller.l.e("Error converting $u", error: e);
       }
     }
 

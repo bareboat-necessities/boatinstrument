@@ -5,26 +5,38 @@ import 'dart:math' as m;
 
 import 'package:actions_menu_appbar/actions_menu_appbar.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:boatinstrument/authorization.dart';
+import 'package:boatinstrument/main.dart';
 import 'package:boatinstrument/theme_provider.dart';
 import 'package:boatinstrument/widgets/anchor_box.dart';
 import 'package:boatinstrument/widgets/boat_box.dart';
+import 'package:boatinstrument/widgets/compass_rose_box.dart';
 import 'package:boatinstrument/widgets/custom_box.dart';
 import 'package:boatinstrument/widgets/date_time_box.dart';
 import 'package:boatinstrument/widgets/electrical_box.dart';
 import 'package:boatinstrument/widgets/environment_box.dart';
+import 'package:boatinstrument/widgets/launch_box.dart';
 import 'package:boatinstrument/widgets/navigation_box.dart';
+import 'package:boatinstrument/widgets/network.dart';
 import 'package:boatinstrument/widgets/propulsion_box.dart';
-import 'package:boatinstrument/widgets/rpi_box.dart';
+import 'package:boatinstrument/widgets/remote_box.dart';
+import 'package:boatinstrument/widgets/hardware.dart';
 import 'package:boatinstrument/widgets/tank_box.dart';
 import 'package:boatinstrument/widgets/vnc_box.dart';
 import 'package:boatinstrument/widgets/webview_box.dart';
 import 'package:boatinstrument/widgets/wind_box.dart';
 import 'package:boatinstrument/widgets/wind_rose_box.dart';
+import 'package:bonsoir/bonsoir.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_onscreen_keyboard/flutter_onscreen_keyboard.dart';
 import 'package:http/http.dart' as http;
 import 'package:format/format.dart' as fmt;
 import 'package:flutter/services.dart';
-import 'package:bonsoir/bonsoir.dart';
+import 'package:intl/intl.dart' show DateFormat;
+import 'package:markdown_widget/markdown_widget.dart';
+import 'package:nanoid/nanoid.dart';
+import 'package:text_scroll/text_scroll.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:share_plus/share_plus.dart';
@@ -46,6 +58,7 @@ part 'data.dart';
 part 'settings_page.dart';
 part 'edit_page.dart';
 part 'help_page.dart';
+part 'awesome_font.dart';
 
 class CircularLogOutput extends LogOutput {
   static final CircularBuffer<String> _buffer = CircularBuffer(100);
@@ -82,19 +95,23 @@ class CircularLogger extends Logger {
             }));
 }
 
-enum NotificationState {
-  normal(false, 1, null),
-  nominal(false, 1, null),
-  alert(false, 5, 'alert.mp3'),
-  warn(false, 10, 'warning.mp3'),
-  alarm(true, 20, 'alarm.mp3'),
-  emergency(true, 30, 'emergency.wav');
+enum NotificationState implements EnumMenuEntry {
+  normal('Normal', false, 1, null),
+  nominal('Nominal', false, 1, null),
+  alert('Alert', false, 5, 'alert.mp3'),
+  warn('Warning', false, 10, 'warning.mp3'),
+  alarm('Alarm', true, 20, 'alarm.mp3'),
+  emergency('Emergency', true, 30, 'emergency.wav');
+
+  @override
+  String get displayName => _displayName;
+  final String _displayName;
 
   final bool error;
   final int count;
   final String? soundFile;
 
-  const NotificationState(this.error, this.count, this.soundFile);
+  const NotificationState(this._displayName, this.error, this.count, this.soundFile);
 }
 
 class NotificationStatus {
@@ -110,15 +127,32 @@ class BoatInstrumentController {
   final bool _noAudio;
   final bool _noBrightnessControls;
   final bool _enableExit;
+  final bool _enablePoweroff;
   final bool _enableSetTime;
+  final MainPageState _mainPageState;
   bool _timeSet = false;
   _Settings? _settings;
+  int _pageNum = 0;
+  bool _rotatePages = false;
+  Timer? _pageTimer;
+  static const _brightnessStep = 4;
+  static const _brightnessMax = 12;
+  static final Map<int, IconData> brightnessIcons = {
+    12: Icons.brightness_high,
+    8: Icons.brightness_medium,
+    4: Icons.brightness_low,
+    0: Icons.brightness_4_outlined
+  };
+  int _brightness = _brightnessMax;
+
   Uri _httpApiUri = Uri();
   Uri _wsUri = Uri();
   int _boxesOnPage = 0;
   final List<_BoxData> _boxData = [];
-  WebSocketChannel? _channel;
-  StreamSubscription? _streamSubscription;
+  WebSocketChannel? _dataChannel;
+  WebSocketChannel? _controlChannel;
+  StreamSubscription? _dataStreamSubscription;
+  StreamSubscription? _controlStreamSubscription;
   Timer? _networkTimer;
   AudioPlayer? _audioPlayer;
   DateTime? _time;
@@ -126,10 +160,11 @@ class BoatInstrumentController {
   final Map<String, NotificationStatus> _notifications = {};
   final Set<String> _backgroundIDs = {};
   final Set<String> _paths = {};
+  final Set<String> _controlPaths = {};
   final Set<String> _staticPaths = {};
 
 
-  BoatInstrumentController(this._noAudio, this._noBrightnessControls, this._enableExit, this._enableSetTime) {
+  BoatInstrumentController(this._mainPageState, this._noAudio, this._noBrightnessControls, this._enableExit, this._enablePoweroff, this._enableSetTime) {
     _audioPlayer = _noAudio ? null : AudioPlayer();
   }
 
@@ -144,6 +179,8 @@ class BoatInstrumentController {
   bool get brightnessControl => _settings!.brightnessControl;
   bool get keepAwake => _settings!.keepAwake;
   bool get pageTimerOnStart => _settings!.pageTimerOnStart;
+  bool get arePagesRotating => _rotatePages;
+  IconData get brightnessIcon => brightnessIcons[_brightness]??Icons.brightness_4_outlined; // This will only do the null substitute on MacOS.
   bool get enableExperimentalBoxes => _settings!.enableExperimentalBoxes;
   DistanceUnits get distanceUnits => _settings!.distanceUnits;
   int get m2nmThreshold => _settings!.m2nmThreshold;
@@ -155,10 +192,10 @@ class BoatInstrumentController {
   OilPressureUnits get oilPressureUnits => _settings!.oilPressureUnits;
   CapacityUnits get capacityUnits => _settings!.capacityUnits;
   FluidRateUnits get fluidRateUnits => _settings!.fluidRateUnits;
-  int get numOfPages => _settings!.pages.length;
   Map<String, NotificationStatus> get notifications => _notifications;
   bool get muted => _notifications.entries.any((element) => element.value.mute);
   Set<String> get paths => _paths;
+  Set<String> get controlPaths => _controlPaths;
   Set<String> get staticPaths => _staticPaths;
 
   DateTime now() {
@@ -337,6 +374,10 @@ class BoatInstrumentController {
     }
   }
 
+  void playSoundFile(String soundFile) {
+    _audioPlayer?.play(AssetSource(soundFile));
+  }
+
   Future<void> _loadDefaultConfig(bool portrait) async {
     String config = portrait ?
       'default-config-portrait.json' :
@@ -358,12 +399,12 @@ class BoatInstrumentController {
 
     _configureBackgroundData();
 
-    if(_noBrightnessControls) {
+    if(_noBrightnessControls || Platform.isLinux) {
       _settings?.brightnessControl = false;
     }
   }
 
-  void clear() {
+  void _clear() {
     _unsubscribe();
     _boxesOnPage = 0;
     _boxData.clear();
@@ -375,8 +416,8 @@ class BoatInstrumentController {
   }
 
   // Call this in the Widget's State initState() to subscribe to Signalk data.
-  void configure({OnUpdate? onUpdate, Set<String>? paths, OnUpdate? onStaticUpdate, Set<String>? staticPaths, SignalKDataType dataType = SignalKDataType.realTime, bool isBox = true}) {
-
+  void configure({OnUpdate? onUpdate, Set<String>? paths, OnUpdate? onStaticUpdate, Set<String>? staticPaths, SignalKDataType dataType = SignalKDataType.realTime, bool isBox = true, bool onControlChannel = false}) {
+  
     // ============= PATH MAPPING =============
     // String pathsString = '';
     // for(String p in paths??{}) pathsString='${pathsString.isNotEmpty?'$pathsString<br>':''}$p';
@@ -387,7 +428,7 @@ class BoatInstrumentController {
       ++_boxesOnPage;
     }
 
-    _BoxData bd = _BoxData(now(), onUpdate, paths??{}, onStaticUpdate, staticPaths??{}, dataType);
+    _BoxData bd = _BoxData(onUpdate, paths??{}, onStaticUpdate, staticPaths??{}, dataType, onControlChannel);
     _boxData.add(bd);
 
     for(String path in bd.paths) {
@@ -405,7 +446,7 @@ class BoatInstrumentController {
     }
 
     if(isBox) {
-      _subscribe();
+      _subscribe(false);
     }
   }
 
@@ -438,6 +479,7 @@ class BoatInstrumentController {
         SnackBar(
             backgroundColor: (error) ? Colors.orange : null,
             duration: Duration(milliseconds: millisecondsDuration),
+            persist: false,
             action: action,
             content: Text(msg)));
   }
@@ -480,7 +522,7 @@ class BoatInstrumentController {
                   // ============= PATH MAPPING =============
                   // List<BoxWidget> stack = [];
                   // for(BoxDetails bd in boxDetails) {
-                  //   print('|${bd.id}|${bd.description}|');
+                  //   print('|${bd.id}|');
                   //   stack.add(bd.build(BoxWidgetConfig(this, box.settings, constraints, false)));
                   // }
                   // return Stack(children: stack);
@@ -519,13 +561,18 @@ class BoatInstrumentController {
     });
   }
 
-  Widget buildPage(int pageNum) {
-    _Page page = _settings!.pages[pageNum];
+  Widget buildPage() {
+    // Sanity check
+    if(_pageNum >= _settings!.pages.length) _pageNum = _settings!.pages.length-1;
+
+    _Page page = _settings!.pages[_pageNum];
 
     return LayoutBuilder(builder: (context, constraints) {
-      clear();
+      _clear();
 
-      configure(onUpdate: (List<Update>? updates) {_onNotification(context, updates);}, paths: {'notifications.*'}, isBox: false);
+      configure(onUpdate: (List<Update> updates) {_onNotification(context, updates);}, paths: {'notifications.*'}, isBox: false);
+
+      _addRemoteControlSubscriptions();
 
       for(var id in _backgroundIDs) {
         getBoxDetails(id).background!.call(this);
@@ -558,17 +605,30 @@ class BoatInstrumentController {
     _notifications.clear();
   }
 
-  void _onNotification(BuildContext context, List<Update>? updates) {
+  void _addRemoteControlSubscriptions() {
+    if(_settings!.allowRemoteControl) {
+      Set<String> actionPaths = {};
+      if(_settings!.clientID.isNotEmpty) actionPaths.add('$bi.devices.${_settings!.clientID}.action');
+      if(_settings!.groupID.isNotEmpty) actionPaths.add('$bi.groups.${_settings!.groupID}.action');
+      for(var gID in _settings!.supplementalGroupIDs) {
+        actionPaths.add('$bi.groups.$gID.action');
+      }
+
+      if(actionPaths.isNotEmpty) configure(onUpdate: _onRemoteControl, paths: actionPaths, isBox: false, onControlChannel: true);
+    }
+  }
+
+  void _onNotification(BuildContext context, List<Update> updates) {
     DateTime now = this.now();
 
     _notifications.removeWhere((path, notification) {
       return now.difference(notification.last) > Duration(minutes: _settings!.notificationMuteTimeout);
     });
 
-    if (updates == null) {
-      _audioPlayer?.release();
-    } else {
-      for(Update u in updates) {
+    for(Update u in updates) {
+      if (u.value == null) {
+        _audioPlayer?.release();
+      } else {
         try {
           NotificationStatus notificationStatus = _notifications.putIfAbsent(u.path, () => NotificationStatus());
           NotificationState newState = NotificationState.values.byName(
@@ -594,7 +654,7 @@ class BoatInstrumentController {
                 }));
 
             if (playSound && newState.soundFile != null) {
-              _audioPlayer?.play(AssetSource(newState.soundFile!));
+              playSoundFile(newState.soundFile!);
             }
           }
         } catch(e) {
@@ -604,51 +664,175 @@ class BoatInstrumentController {
     }
   }
 
-  int nextPageNum(int currentPage) {
-    if(_settings!.pages.isEmpty) {
-      _settings?.pages = [_Page._newPage()];
-      return 0;
+  void _onRemoteControl(List<Update> updates) {
+    for (Update u in updates) {
+      try {
+        if(u.value == null) return;
+
+        switch(u.value['id']) {
+          case 'gotoPage':
+            gotoPage(u.value['page']);
+            break;
+          case 'firstPage':
+            firstPage();
+            break;
+          case 'decPage':
+            prevPage();
+            break;
+          case 'incPage':
+            nextPage();
+            break;
+          case 'lastPage':
+            lastPage();
+            break;
+          case 'rotatePagesOn':
+            toggleRotatePages(on: true);
+            break;
+          case 'rotatePagesOff':
+            toggleRotatePages(on: false);
+            break;
+          case 'setBrightness':
+            stepBrightness(level: u.value['level']);
+            break;
+          case 'nightMode':
+            _mainPageState.nightMode(on: u.value['on']);
+            break;
+        }
+      } catch (e) {
+        l.e("Error converting $u", error: e);
+      }
     }
-    ++currentPage;
-    if(_settings!.wrapPages) {
-      return currentPage %= _settings!.pages.length;
-    }
-    return (currentPage >= _settings!.pages.length) ? _settings!.pages.length-1 : currentPage;
   }
 
-  int prevPageNum(int currentPage) {
-    --currentPage;
-    if(_settings!.wrapPages) {
-      return currentPage %= _settings!.pages.length;
-    }
-    return (currentPage < 0) ? 0 : currentPage;
+  void firstPage() {
+    int lastPage = _pageNum;
+    _pageNum = 0;    
+    if (lastPage != _pageNum) _mainPageState.rebuild();
   }
 
-  (int, int?) rotatePageNum(int currentPage) {
+  void nextPage() {
+    int lastPage = _pageNum;
     if(_settings!.pages.isEmpty) {
       _settings?.pages = [_Page._newPage()];
-      return (0, null);
+      _mainPageState.rebuild();
+      return;
+    }
+    ++_pageNum;
+    if(_settings!.wrapPages) {
+      _pageNum %= _settings!.pages.length;
+    }
+    _pageNum = (_pageNum >= _settings!.pages.length) ? _settings!.pages.length-1 : _pageNum;
+    
+    if (lastPage != _pageNum) _mainPageState.rebuild();
+  }
+
+  void prevPage() {
+    int lastPage = _pageNum;
+    --_pageNum;
+    if(_settings!.wrapPages) {
+      _pageNum %= _settings!.pages.length;
+    }
+    _pageNum = (_pageNum < 0) ? 0 : _pageNum;
+
+    if (lastPage != _pageNum) _mainPageState.rebuild();
+  }
+
+  void lastPage() {
+    int lastPage = _pageNum;
+    _pageNum = _settings!.pages.length-1;    
+    if (lastPage != _pageNum) _mainPageState.rebuild();
+  }
+
+  void gotoPage(String pageName) {
+    int pageNum = _settings!.pages.indexWhere((page) {return page.name == pageName;});
+    if(pageNum != -1 && pageNum != _pageNum) {
+      _pageNum = pageNum;
+      _mainPageState.rebuild();
+    }
+  }
+
+  void toggleRotatePages({bool? on}) {
+    _rotatePages = on??!_rotatePages;
+
+    if(_rotatePages) {
+      startPageTimer();
+    } else {
+      stopPageTimer();
+    }
+
+    _mainPageState.rebuild();
+  }
+
+  void startPageTimer({int timeout = 0}) {
+    stopPageTimer();
+
+    if(_rotatePages) {
+      _pageTimer = Timer(Duration(seconds: timeout), _rotatePage);
+    }
+  }
+
+  void stopPageTimer() {
+    _pageTimer?.cancel();
+    _pageTimer = null;
+  }
+
+  void _rotatePage() {
+    if(_settings!.pages.isEmpty) {
+      _settings?.pages = [_Page._newPage()];
     }
     int i = 0;
     do {
-      ++currentPage;
-      currentPage %= _settings!.pages.length;
-      int? timeout = _settings!.pages[currentPage].timeout;
+      ++_pageNum;
+      _pageNum %= _settings!.pages.length;
+      int? timeout = _settings!.pages[_pageNum].timeout;
       if(timeout != null) {
-        return (currentPage, timeout);
+        _mainPageState.rebuild();
+        startPageTimer(timeout: timeout);
+        break;
       }
     } while (++i < _settings!.pages.length);
-    // There are no pages with timeouts.
-    return (0, null);
   }
 
-  String pageName(int pageNum) {
-    return '${pageNum+1}/${_settings!.pages.length} ${_settings!.pages[pageNum].name}';
+  void stepBrightness({bool init = false, int? level}) async {
+
+    if(brightnessControl) {
+      if(init) {
+        // Convert the current system brightness into the closest step, rounding up.
+        // Note: We add the step as well as _setBrightness() will remove it.
+        _brightness = (await ScreenBrightness().system * _brightnessMax).ceil();
+        _brightness =
+            _brightness - (_brightness % _brightnessStep) + (_brightnessStep * 2);
+      }
+
+      if(level == null) {
+        _brightness = ((_brightness < _brightnessStep) || (_brightness > _brightnessMax)) ? _brightnessMax : _brightness - _brightnessStep;
+      } else {
+        _brightness = level;
+      }
+      if(Platform.isMacOS && _brightness == 0) {
+       _brightness = 1;
+      }
+
+      ScreenBrightness().setApplicationScreenBrightness(_brightness/_brightnessMax);
+      _mainPageState.rebuild();
+    }
+  }
+
+  String pageName() {
+    return '${_pageNum+1}/${_settings!.pages.length} ${_settings!.pages[_pageNum].name}';
   }
 
   Map<String, String> _httpHeaders(Map<String, String>? headers) {
+    // We don't add headers in demo mode as any auth tokens will stop the
+    // connection to the demo server.
+    if(_settings!.demoMode) return {};
+
     Map<String, String> h = headers??{};
 
+    if(_settings!.authToken.isNotEmpty) {
+      h['Authorization'] = 'Bearer ${_settings!.authToken}';
+    }
+    
     for (var header in _settings!.httpHeaders) {
       h[header.name] = header.value;
     }
@@ -682,28 +866,29 @@ class BoatInstrumentController {
         scheme = 'https';
       }
       else if(_settings!.discoverServer) {
-        BonsoirDiscovery discovery = BonsoirDiscovery(type: '_signalk-http._tcp');
-        await discovery.ready;
-        discovery.start();
+        host = '';
+        port = 0;
+        BonsoirDiscovery discovery = BonsoirDiscovery(type:  '_signalk-http._tcp');
+        await discovery.initialize();
+        await discovery.start();
         Timer t = Timer(const Duration(seconds: 10), () {discovery.stop();});
         try {
           await for(BonsoirDiscoveryEvent e in discovery.eventStream!) {
-            if (e.type == BonsoirDiscoveryEventType.discoveryServiceFound) {
-              e.service!.resolve(discovery.serviceResolver);
-            } else if (e.type == BonsoirDiscoveryEventType.discoveryServiceResolved) {
-              ResolvedBonsoirService r = e.service as ResolvedBonsoirService;
-              host = r.host!;
-              port = r.port;
+            if (e is BonsoirDiscoveryServiceFoundEvent) {
+              e.service.resolve(discovery.serviceResolver);
+            } else if (e is BonsoirDiscoveryServiceResolvedEvent) {
+              host = e.service.host!;
+              port = e.service.port;
+              discovery.stop();
               break;
-            } else if (e.type == BonsoirDiscoveryEventType.discoveryStopped) {
+            } else if (e is BonsoirDiscoveryStoppedEvent) {
               // This should only happen if the Timer expires.
               throw Exception('Service discovery failed');
             }
-          }
-        } finally {
+           }
+         } finally {
           t.cancel();
-          discovery.stop();
-        }
+         }
       }
 
       Uri uri = Uri(scheme: scheme, host: host, port: port, pathSegments: paths);
@@ -725,24 +910,33 @@ class BoatInstrumentController {
     try {
       for(_BoxData bd in _boxData) {
         if(bd.onUpdate != null) {
-          bd.onUpdate!(null);
+          bd.updates.clear();
+          for(String path in bd.pathTimestamps.keys) {
+            bd.updates.add(Update(path, null));
+          }
+          bd.pathTimestamps.clear();
+          if(bd.updates.isNotEmpty) bd.onUpdate!(bd.updates);
         }
       }
 
-      await _streamSubscription?.cancel();
-      await _channel?.sink.close();
-      _channel = null;
+      await _dataStreamSubscription?.cancel();
+      await _controlStreamSubscription?.cancel();
+      await _dataChannel?.sink.close();
+      await _controlChannel?.sink.close();
+      _dataChannel = _controlChannel = null;
 
       _networkTimeout();
       await _discoverServices();
 
       l.i("Connecting to: $wsUri");
 
-      _channel = IOWebSocketChannel.connect(wsUri.replace(query: 'subscribe=none'), headers: _httpHeaders(null));
+      _dataChannel = IOWebSocketChannel.connect(wsUri.replace(query: 'subscribe=none'), headers: _httpHeaders(null));
+      _controlChannel = IOWebSocketChannel.connect(wsUri.replace(query: 'subscribe=none'), headers: _httpHeaders(null));
 
-      await _channel?.ready;
+      await _dataChannel?.ready;
+      await _controlChannel?.ready;
 
-      _streamSubscription = _channel?.stream.listen(
+      _dataStreamSubscription = _dataChannel?.stream.listen(
           _processData,
           onError: (e) {
             l.e('WebSocket stream error', error: e);
@@ -752,38 +946,64 @@ class BoatInstrumentController {
           }
       );
 
-      _subscribe();
+      _controlStreamSubscription = _controlChannel?.stream.listen(
+          _processData,
+          onError: (e) {
+            l.e('WebSocket stream error', error: e);
+          },
+          onDone: () {
+            l.w('WebSocket closed');
+          }
+      );
+
+      _publishDeviceDetails();
+
+      _addRemoteControlSubscriptions();
+      
+      _subscribe(true);
 
       l.i("Connected to: $wsUri");
     } catch (e) {
       l.e('Error connecting WebSocket', error: e);
+      _dataChannel = _controlChannel = null;
+    }
+  }
+
+  void _send(Object data, {bool controlChannel = false}) {
+    try {
+      (controlChannel?_controlChannel:_dataChannel)?.sink.add(jsonEncode(data));
+    } catch (e) {
+      l.e("Error sending ${controlChannel?'control':'data'} data $data", error: e);
     }
   }
 
   void _unsubscribe() {
-    _channel?.sink.add(
-      jsonEncode(
-          {
-            "context": "*",
-            "unsubscribe": [
-              {"path": "*"}
-            ]
-          }
-      ),
+    _send(
+      {
+        "context": "*",
+        "unsubscribe": [
+          {"path": "*"}
+        ]
+      }
     );
   }
 
-  void _subscribe() {
-    if(_boxData.length == _boxesOnPage) {
-      _paths.clear();
-      _paths.add('navigation.datetime'); // Keep alive test.
-      _staticPaths.clear();
-
-      // Find all the unique paths.
-      for (_BoxData bd in _boxData) {
+  void _subscribe(bool connecting) {
+    // Find all the unique paths.
+    _paths.clear();
+    _controlPaths.clear();
+    _staticPaths.clear();
+    for (_BoxData bd in _boxData) {
+      if(bd.onControlChannel) {
+        _controlPaths.addAll(bd.paths);
+      } else {
         _paths.addAll(bd.paths);
-        _staticPaths.addAll(bd.staticPaths);
       }
+      _staticPaths.addAll(bd.staticPaths);
+    }
+
+    if(_boxData.length == _boxesOnPage) {
+      _paths.add('navigation.datetime'); // Keep alive test.
 
       _getStaticData(_staticPaths);
 
@@ -799,15 +1019,106 @@ class BoatInstrumentController {
         });
       }
 
-      _channel?.sink.add(
-        jsonEncode(
-          {
-            "context": "vessels.self",
-            "subscribe": subscribe
-          },
-        ),
+      _send(
+        {
+          "context": "vessels.self",
+          "subscribe": subscribe
+        },
       );
     }
+
+    if(connecting) {
+      List<Map<String, String>> subscribe = [];
+
+      for(String path in _controlPaths) {
+        subscribe.add({
+          "path": path,
+          "policy": 'instant',
+          "minPeriod": _settings!.signalkMinPeriod.toString()
+        });
+      }
+
+      _send(controlChannel: true,
+        {
+          "context": "vessels.self",
+          "subscribe": subscribe
+        },
+      );
+    }
+  }
+
+  void _publishDeviceDetails() {
+    if(_settings!.allowRemoteControl) {
+      List<String> pageNames = [];
+      for(_Page page in _settings!.pages) {
+        pageNames.add(page.name);
+      }
+
+      if(_settings!.clientID.isNotEmpty) {
+        // If we don't have permission, then updates are ignored.
+        _send(
+          {
+            "updates": [{
+              "values": [
+                {
+                  "path": "$bi.devices.${_settings!.clientID}.pages",
+                  "value": pageNames
+                }
+              ]
+            }]
+          }
+        );
+      }
+
+      if(_settings!.groupID.isNotEmpty) {
+        _send(
+          {
+            "updates": [{
+              "values": [
+                {
+                  "path": "$bi.groups.${_settings!.groupID}.pages",
+                  "value": pageNames
+                }
+              ]
+            }]
+          }
+        );
+      }
+
+      if(_settings!.supplementalGroupIDs.isNotEmpty) {
+        List<dynamic> values = [];
+        for(var groupID in _settings!.supplementalGroupIDs) {
+          values.add({
+            "path": "$bi.groups.$groupID",
+            "value": null
+
+          });
+        }
+
+        _send(
+          {
+            "updates": [{
+              "values": values
+            }]
+          }
+        );
+      }
+    }
+  }
+
+  void sendUpdate(String path, dynamic value) {
+    _send(
+      {
+        "updates": [{
+          "values": [
+            {
+              "path": path,
+              "value": value
+            }
+          ]
+        }]
+      }
+    );
   }
 
   void _networkTimeout () {
@@ -863,7 +1174,7 @@ class BoatInstrumentController {
                     if(_settings!.setTime && !_timeSet && path == 'navigation.datetime') _setTime(value);
 
                     bd.updates.add(Update(path,value));
-                    bd.lastUpdate = now;
+                    bd.pathTimestamps[path] = now;
                   } else {
                    l.i('Discarding old data for "$u"');
                   }
@@ -878,18 +1189,20 @@ class BoatInstrumentController {
 
       for(_BoxData bd in _boxData) {
         if(bd.onUpdate != null) {
-          if (bd.updates.isNotEmpty) {
-            // Send updates to Box.
-            bd.onUpdate!(bd.updates);
-          } else {
-            Duration d = now.difference(bd.lastUpdate);
+          var pt = bd.pathTimestamps;
+          for(String path in pt.keys.toSet()) { // We make a copy of the keys as we might remove some.
+            Duration d = now.difference(pt[path]!);
             if (
             ((bd.dataType == SignalKDataType.realTime) && d > realTimeDuration) ||
             ((bd.dataType == SignalKDataType.infrequent) && d > infrequentDuration)
             ) {
-              bd.onUpdate!(null);
-              bd.lastUpdate = now;
+              bd.updates.add(Update(path, null));
+              bd.pathTimestamps.remove(path);
             }
+          }
+          if (bd.updates.isNotEmpty) {
+            // Send updates to Box.
+            bd.onUpdate!(bd.updates);
           }
         }
       }
@@ -911,10 +1224,6 @@ class BoatInstrumentController {
         },
     );
 
-    for(_BoxData bd in _boxData) {
-      bd.staticUpdates.clear();
-    }
-
     if(response.statusCode == HttpStatus.ok) {
       dynamic data = json.decode(response.body);
       try {
@@ -923,20 +1232,12 @@ class BoatInstrumentController {
         for (_BoxData bd in _boxData) {
           for (RegExp r in bd.regExpStaticPaths) {
             if (r.hasMatch(path)) {
-              bd.staticUpdates.add(Update(path, value));
+              if(bd.onStaticUpdate!=null) bd.onStaticUpdate!([Update(path, value)]);
             }
           }
         }
       } catch (e) {
         l.e('Error converting "$data" for "$path"', error: e);
-      }
-    }
-
-    for(_BoxData bd in _boxData) {
-      if(bd.staticUpdates.isNotEmpty) {
-        if (bd.onStaticUpdate != null) {
-          bd.onStaticUpdate!(bd.staticUpdates);
-        }
       }
     }
   }
@@ -961,6 +1262,33 @@ class BoatInstrumentController {
     }
   }
 
+  Uri _pathUri(String path) {
+    Uri uri = httpApiUri;
+
+    List<String> basePathSegments = [...uri.pathSegments]
+      ..removeLast()
+      ..addAll(['vessels', 'self']);
+
+    List<String> pathSegments = [...basePathSegments, ...path.split('.')];
+
+    return uri.replace(pathSegments: pathSegments);
+  }
+
+  Future<double> getPathDouble(String path) async {
+    Uri uri = _pathUri(path);
+
+    http.Response response = await httpGet(
+      uri,
+      headers: {
+        "accept": "application/json",
+      },
+    );
+
+    if(response.statusCode != HttpStatus.ok) throw Exception('Failed to retrieve double for $path');
+
+    return (json.decode(response.body)['value'] as num).toDouble();
+  }
+
   void _setTime(String timeStr) async {
     try {
       var r = await Process.run('/usr/bin/sudo', ['/usr/bin/date', '--utc', '--set', timeStr]);
@@ -976,4 +1304,20 @@ class BoatInstrumentController {
 
     _timeSet = true;
   }
+
+  Future<void> showSettingsPage (BuildContext context, BoxWidget boxWidget) async {
+    BoxSettingsWidget boxSettingsWidget =  boxWidget.getSettingsWidget(getBoxSettingsJson(boxWidget.id))!;
+
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (context) {
+          return _BoxSettingsPage(
+              boxSettingsWidget,
+              boxWidget.getSettingsHelp()
+          );
+        })
+    );
+
+    _settings?.boxSettings[boxWidget.id] = boxSettingsWidget.getSettingsJson();
+  }
+
 }

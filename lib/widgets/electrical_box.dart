@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:boatinstrument/authorization.dart';
 import 'package:boatinstrument/boatinstrument_controller.dart';
 import 'package:boatinstrument/widgets/double_value_box.dart';
 import 'package:boatinstrument/widgets/gauge_box.dart';
@@ -9,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:format/format.dart';
 import 'package:http/http.dart' as http;
 import 'package:json_annotation/json_annotation.dart';
-import 'package:nanoid/nanoid.dart';
 
 part 'electrical_box.g.dart';
 
@@ -57,7 +55,7 @@ class BatteryVoltMeterBox extends DoubleValueSemiGaugeBox {
   final _ElectricalBatterySettings _settings;
 
   const BatteryVoltMeterBox._init(this._settings, config, title, path, {super.key, super.minValue, super.maxValue, super.ranges, super.step}) :
-    super(config, title, GaugeOrientation.up, path);
+    super(config, title, GaugeOrientation.up, path, dataType: SignalKDataType.infrequent);
 
   factory BatteryVoltMeterBox.fromSettings(BoxWidgetConfig config, {key}) {
     _ElectricalBatterySettings s = _$ElectricalBatterySettingsFromJson(config.settings);
@@ -89,7 +87,7 @@ class BatteryVoltMeterBox extends DoubleValueSemiGaugeBox {
   }
 
   @override
-  Widget? getPerBoxSettingsHelp() => const HelpTextWidget('For a path of "$batteriesBasePath.start.voltage" the ID is "start"');
+  Widget? getPerBoxSettingsHelp() => const HelpPage(text: 'For a path of "$batteriesBasePath.start.voltage" the ID is "start"');
 
   @override
   DoubleValueSemiGaugeBoxState<BatteryVoltMeterBox> createState() => _BatteryVoltMeterState();
@@ -160,7 +158,7 @@ class BatteryVoltageBox extends DoubleValueBox {
 
   final _ElectricalSettings _settings;
 
-  const BatteryVoltageBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path);
+  const BatteryVoltageBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path, dataType: SignalKDataType.infrequent);
 
   factory BatteryVoltageBox.fromSettings(BoxWidgetConfig config, {key}) {
     _ElectricalSettings s = _$ElectricalSettingsFromJson(config.settings);
@@ -186,7 +184,7 @@ class BatteryVoltageBox extends DoubleValueBox {
   }
 
   @override
-  Widget? getPerBoxSettingsHelp() => const HelpTextWidget('For a path of "$batteriesBasePath.start.voltage" the ID is "start"');
+  Widget? getPerBoxSettingsHelp() => const HelpPage(text: 'For a path of "$batteriesBasePath.start.voltage" the ID is "start"');
 }
 
 class BatteryCurrentBox extends DoubleValueBox {
@@ -196,7 +194,7 @@ class BatteryCurrentBox extends DoubleValueBox {
 
   final _ElectricalSettings _settings;
 
-  const BatteryCurrentBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path, smoothing: false);
+  const BatteryCurrentBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path, smoothing: false, dataType: SignalKDataType.infrequent);
 
   factory BatteryCurrentBox.fromSettings(BoxWidgetConfig config, {key}) {
     _ElectricalSettings s = _$ElectricalSettingsFromJson(config.settings);
@@ -222,7 +220,7 @@ class BatteryCurrentBox extends DoubleValueBox {
   }
 
   @override
-  Widget? getPerBoxSettingsHelp() => const HelpTextWidget('For a path of "$batteriesBasePath.start.current" the ID is "start"');
+  Widget? getPerBoxSettingsHelp() => const HelpPage(text: 'For a path of "$batteriesBasePath.start.current" the ID is "start"');
 }
 
 class BatteryTemperatureBox extends DoubleValueBox {
@@ -232,7 +230,7 @@ class BatteryTemperatureBox extends DoubleValueBox {
 
   final _ElectricalSettings _settings;
 
-  const BatteryTemperatureBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path, smoothing: false);
+  const BatteryTemperatureBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path, smoothing: false, dataType: SignalKDataType.infrequent);
 
   factory BatteryTemperatureBox.fromSettings(BoxWidgetConfig config, {key}) {
     _ElectricalSettings s = _$ElectricalSettingsFromJson(config.settings);
@@ -258,7 +256,7 @@ class BatteryTemperatureBox extends DoubleValueBox {
   }
 
   @override
-  Widget? getPerBoxSettingsHelp() => const HelpTextWidget('For a path of "$batteriesBasePath.start.temperature" the ID is "start"');
+  Widget? getPerBoxSettingsHelp() => const HelpPage(text: 'For a path of "$batteriesBasePath.start.temperature" the ID is "start"');
 }
 
 class InverterCurrentBox extends DoubleValueBox {
@@ -268,7 +266,7 @@ class InverterCurrentBox extends DoubleValueBox {
 
   final _ElectricalSettings _settings;
 
-  const InverterCurrentBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path, smoothing: false);
+  const InverterCurrentBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path, smoothing: false, dataType: SignalKDataType.infrequent);
 
   factory InverterCurrentBox.fromSettings(BoxWidgetConfig config, {key}) {
     _ElectricalSettings s = _$ElectricalSettingsFromJson(config.settings);
@@ -294,7 +292,7 @@ class InverterCurrentBox extends DoubleValueBox {
   }
 
   @override
-  Widget? getPerBoxSettingsHelp() => const HelpTextWidget('For a path of "$invertersBasePath.1.dc.current" the ID is "1"');
+  Widget? getPerBoxSettingsHelp() => const HelpPage(text: 'For a path of "$invertersBasePath.1.dc.current" the ID is "1"');
 }
 
 class SolarVoltageBox extends DoubleValueBox {
@@ -304,7 +302,7 @@ class SolarVoltageBox extends DoubleValueBox {
 
   final _ElectricalSettings _settings;
 
-  const SolarVoltageBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path);
+  const SolarVoltageBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path, dataType: SignalKDataType.infrequent);
 
   factory SolarVoltageBox.fromSettings(BoxWidgetConfig config, {key}) {
     _ElectricalSettings s = _$ElectricalSettingsFromJson(config.settings);
@@ -330,7 +328,7 @@ class SolarVoltageBox extends DoubleValueBox {
   }
 
   @override
-  Widget? getPerBoxSettingsHelp() => const HelpTextWidget('For a path of "$solarBasePath.1.voltage" the ID is "1"');
+  Widget? getPerBoxSettingsHelp() => const HelpPage(text: 'For a path of "$solarBasePath.1.voltage" the ID is "1"');
 }
 
 class SolarCurrentBox extends DoubleValueBox {
@@ -340,7 +338,7 @@ class SolarCurrentBox extends DoubleValueBox {
 
   final _ElectricalSettings _settings;
 
-  const SolarCurrentBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path, smoothing: false);
+  const SolarCurrentBox._init(this._settings, config, title, path, {super.key}) : super(config, title, path, smoothing: false, dataType: SignalKDataType.infrequent);
 
   factory SolarCurrentBox.fromSettings(BoxWidgetConfig config, {key}) {
     _ElectricalSettings s = _$ElectricalSettingsFromJson(config.settings);
@@ -367,7 +365,7 @@ class SolarCurrentBox extends DoubleValueBox {
   }
 
   @override
-  Widget? getPerBoxSettingsHelp() => const HelpTextWidget('For a path of "$solarBasePath.1.current" the ID is "1"');
+  Widget? getPerBoxSettingsHelp() => const HelpPage(text: 'For a path of "$solarBasePath.1.current" the ID is "1"');
 }
 
 class BatteriesBox extends BoxWidget {
@@ -392,7 +390,7 @@ class _Battery {
   _Battery(this.id);
 }
 
-class _BatteriesBoxState extends State<BatteriesBox> {
+class _BatteriesBoxState extends HeadedTextBoxState<BatteriesBox> {
   List<_Battery> _batteries = [];
 
   _Battery _getBattery(String id) {
@@ -410,23 +408,37 @@ class _BatteriesBoxState extends State<BatteriesBox> {
   @override
   void initState() {
     super.initState();
-    widget.config.controller.configure(onUpdate: _onUpdate, paths: {'$batteriesBasePath.*'});
+    header = 'Batteries';
+    alignment = Alignment.topLeft;
+    widget.config.controller.configure(onUpdate: _onUpdate, dataType: SignalKDataType.infrequent, paths: {
+      '$batteriesBasePath.*.name',
+      '$batteriesBasePath.*.voltage',
+      '$batteriesBasePath.*.current',
+      '$batteriesBasePath.*.capacity',
+      '$batteriesBasePath.*.stateOfCharge',
+      '$batteriesBasePath.*.temperature',
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     BoatInstrumentController c = widget.config.controller;
-    TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
-    const double pad = 5.0;
 
     if(widget.config.editMode) {
-      _Battery b = _Battery('1')
-         ..name = 'bat1'
+      _batteries = [
+        _Battery('1')
+         ..name = 'starter'
          ..voltage = 12.3
          ..current = 12.3
          ..stateOfCharge = 0.5
-         ..temperature = kelvinOffset+12.3;
-      _batteries = [b];
+         ..temperature = kelvinOffset+12.3,
+        _Battery('2')
+         ..name = 'house'
+         ..voltage = 12.3
+         ..current = 12.3
+         ..stateOfCharge = 0.5
+         ..temperature = kelvinOffset+12.3,
+      ];
     }
 
     _batteries.sort((a, b) => (a.name??a.id).compareTo(b.name??b.id));
@@ -438,59 +450,48 @@ class _BatteriesBoxState extends State<BatteriesBox> {
       }
     }
 
-    List<Widget> l = [];
+    StringBuffer textBuffer = StringBuffer();
     if(_batteries.isNotEmpty) {
       String f = ' {:3.0f}% {:4.1f}V {:6.1f}A {:6.1f}${c.temperatureUnits.unit}';
-      String textSample = format('$maxName$f', 1.0, 1.0, 1.0, 1.0);
-      double fontSize = maxFontSize(textSample, style,
-          (widget.config.constraints.maxHeight - style.fontSize! - (3 * pad)) / _batteries.length,
-          widget.config.constraints.maxWidth - (2 * pad));
 
-      TextStyle contentStyle = style.copyWith(fontSize: fontSize);
       for(_Battery b  in _batteries) {
-        l.add(Row(children: [Text(format('{:${maxName.length}s}$f', b.name??b.id, (b.stateOfCharge??0.0)*100, b.voltage??0.0, b.current??0.0, c.temperatureToDisplay(b.temperature??0.0)),
-              textScaler: TextScaler.noScaling,  style: contentStyle)]));
+        textBuffer.writeln(format('{:${maxName.length}s}$f', b.name??b.id, (b.stateOfCharge??0.0)*100, b.voltage??0.0, b.current??0.0, c.temperatureToDisplay(b.temperature??c.temperatureFromDisplay(0.0))));
       }
     }
+    text = textBuffer.toString();
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: HeaderText('Batteries', style: style)),
-      Padding(padding: const EdgeInsets.all(pad), child: Column(children: l))]);
+    return super.build(context);
   }
 
-  void _onUpdate(List<Update>? updates) {
-    if(updates == null) {
-      _batteries = [];
-    } else {
-      for (Update u in updates) {
-        try {
-          List<String> p = u.path.split('.');
-          _Battery b = _getBattery(p[2]);
+  void _onUpdate(List<Update> updates) {
+    for (Update u in updates) {
+      try {
+        List<String> p = u.path.split('.');
+        _Battery b = _getBattery(p[2]);
 
-          switch (p[3]) {
-            case 'name':
-              b.name = u.value;
+        switch (p[3]) {
+          case 'name':
+            b.name = u.value;
+            break;
+          case 'voltage':
+            b.voltage = (u.value==null)?null:(u.value as num).toDouble();
+            break;
+          case 'current':
+            b.current = (u.value==null)?null:(u.value as num).toDouble();
+            break;
+          case 'capacity':
+            switch (p[4]) {
+              case 'stateOfCharge':
+              b.stateOfCharge = (u.value==null)?null:(u.value as num).toDouble();
               break;
-            case 'voltage':
-              b.voltage = (u.value as num).toDouble();
-              break;
-            case 'current':
-              b.current = (u.value as num).toDouble();
-              break;
-            case 'capacity':
-              switch (p[4]) {
-                case 'stateOfCharge':
-                b.stateOfCharge = (u.value as num).toDouble();
-                break;
-              }
-              break;
-            case 'temperature':
-              b.temperature = (u.value as num).toDouble();
-              break;
-          }
-        } catch (e) {
-          widget.config.controller.l.e("Error converting $u", error: e);
+            }
+            break;
+          case 'temperature':
+            b.temperature = (u.value==null)?null:(u.value as num).toDouble();
+            break;
         }
+      } catch (e) {
+        widget.config.controller.l.e("Error converting $u", error: e);
       }
     }
 
@@ -541,18 +542,14 @@ class _ElectricalSettingsState extends State<_ElectricalSettingsWidget> {
 @JsonSerializable()
 class _ElectricalSwitchesSettings {
   bool useSliderForDimming;
-  String clientID;
-  String authToken;
 
   _ElectricalSwitchesSettings({
-    this.useSliderForDimming = false,
-    clientID,
-    this.authToken = '',
-  }) : clientID = clientID??'boatinstrument-electrical-switches-${customAlphabet('0123456789', 4)}';
+    this.useSliderForDimming = false
+  });
 }
 
 mixin SwitchCommands {
-  void _sendCommand(BoxWidgetConfig config, BuildContext context, String authToken, String id, String type, String params) async {
+  void _sendCommand(BoxWidgetConfig config, BuildContext context, String id, String type, String params) async {
     if(config.editMode) {
       return;
     }
@@ -565,8 +562,7 @@ mixin SwitchCommands {
           uri,
           headers: {
             "Content-Type": "application/json",
-            "accept": "application/json",
-            "Authorization": "Bearer $authToken"
+            "accept": "application/json"
           },
           body: params
       );
@@ -594,17 +590,15 @@ class ElectricalSwitchesBox extends BoxWidget {
 
   @override
   BoxSettingsWidget getSettingsWidget(Map<String, dynamic> json) {
-    return _ElectricalSwitchesSettingsWidget(super.config.controller, _$ElectricalSwitchesSettingsFromJson(json));
+    return _ElectricalSwitchesSettingsWidget(_$ElectricalSwitchesSettingsFromJson(json));
   }
 
   @override
-  Widget? getHelp(BuildContext context) => const HelpTextWidget('''Note: due to the scrollable list of Switches, swipe down from the title to configure.
+  Widget? getHelp() => const HelpPage(text: '''**Note:** due to the scrollable list of Switches, swipe down from the title to configure.
 
-This Box requires digital switching plugins that allow PUT requests, e.g. signalk-empirbusnxt-plugin.''');
+This Box requires digital switching plugins that allow **PUT** requests, e.g. **signalk-empirbusnxt-plugin**.
 
-  @override
-  Widget? getSettingsHelp() => const HelpTextWidget('''To be able to control switches, the device must be given "read/write" permission to signalk. Request an Auth Token and without closing the settings page authorise the device in the signalk web interface. When the Auth Token is shown, the settings page can be closed.
-The Client ID can be set to reflect the instrument's location, e.g. "boatinstrument-electrical-switches-tablet". Or the ID can be set to the same value for all instruments to share the same authorisation.''');
+To be able to control switches, the device must be given "read/write" permission to SignalK.''');
 
   @override
   State<ElectricalSwitchesBox> createState() => _ElectricalSwitchesBoxState();
@@ -727,7 +721,7 @@ class _ElectricalSwitchesBoxState extends State<ElectricalSwitchesBox> with Swit
     }
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(padding: const EdgeInsets.all(pad), child: HeaderText('Switches', style: style)),
+        Padding(padding: const EdgeInsets.all(pad), child: HeaderText('Switches')),
         Expanded(child: ListView(children: l))
       ]);
   }
@@ -736,7 +730,7 @@ class _ElectricalSwitchesBoxState extends State<ElectricalSwitchesBox> with Swit
     setState(() {
       s.state = state;
     });
-    _sendCommand(widget.config, context, _settings.authToken, s.id, 'state', '{"value": $state}');
+    _sendCommand(widget.config, context, s.id, 'state', '{"value": $state}');
   }
 
   void _setDimmer(_ElectricalSwitch s, double dimmingLevel) {
@@ -745,11 +739,11 @@ class _ElectricalSwitchesBoxState extends State<ElectricalSwitchesBox> with Swit
       dimmingLevel = dimmingLevel<0 ? 0 : dimmingLevel;
       s.dimmingLevel = dimmingLevel;
     });
-    _sendCommand(widget.config, context, _settings.authToken, s.id, 'dimmingLevel', '{"value": $dimmingLevel}');
+    _sendCommand(widget.config, context, s.id, 'dimmingLevel', '{"value": $dimmingLevel}');
   }
 
-  void _onUpdate(List<Update>? updates) {
-    if(updates == null) {
+  void _onUpdate(List<Update> updates) {
+    if(updates[0].value == null) {
       _switches = [];
     } else {
       for (Update u in updates) {
@@ -784,10 +778,9 @@ class _ElectricalSwitchesBoxState extends State<ElectricalSwitchesBox> with Swit
 }
 
 class _ElectricalSwitchesSettingsWidget extends BoxSettingsWidget {
-  final BoatInstrumentController _controller;
   final _ElectricalSwitchesSettings _settings;
 
-  const _ElectricalSwitchesSettingsWidget(this._controller, this._settings);
+  const _ElectricalSwitchesSettingsWidget(this._settings);
 
   @override
   createState() => _ElectricalSwitchesSettingsState();
@@ -812,44 +805,11 @@ class _ElectricalSwitchesSettingsState extends State<_ElectricalSwitchesSettings
               s.useSliderForDimming = value;
             });
           }),
-      ListTile(
-          leading: const Text("Client ID:"),
-          title: TextFormField(
-              initialValue: s.clientID,
-              onChanged: (value) => s.clientID = value)
-      ),
-      ListTile(
-          leading: const Text("Request Auth Token:"),
-          title: IconButton(onPressed: _requestAuthToken, icon: const Icon(Icons.login))
-      ),
-      ListTile(
-          leading: const Text("Auth token:"),
-          title: Text(s.authToken)
-      ),
     ];
 
     return ListView(children: list);
   }
 
-  void _requestAuthToken() async {
-    SignalKAuthorization(widget._controller).request(widget._settings.clientID, "Boat Instrument - Electrical Switches",
-            (authToken) {
-          setState(() {
-            widget._settings.authToken = authToken;
-          });
-        },
-            (msg) {
-          if (mounted) {
-            setState(() {
-              widget._settings.authToken = msg;
-            });
-          }
-        });
-
-    setState(() {
-      widget._settings.authToken = 'PENDING - keep this page open until request approved';
-    });
-  }
 }
 
 class ElectricalSwitchBox extends BoxWidget {
@@ -868,11 +828,11 @@ class ElectricalSwitchBox extends BoxWidget {
 
   @override
   BoxSettingsWidget getSettingsWidget(Map<String, dynamic> json) {
-    return _ElectricalSwitchesSettingsWidget(super.config.controller, _$ElectricalSwitchesSettingsFromJson(json));
+    return _ElectricalSwitchesSettingsWidget(_$ElectricalSwitchesSettingsFromJson(json));
   }
 
   @override
-  Widget? getHelp(BuildContext context) => const HelpTextWidget('This Box requires digital switching plugins that allow PUT requests, e.g. signalk-empirbusnxt-plugin.');
+  Widget? getHelp() => const HelpPage(text: 'This Box requires digital switching plugins that allow **PUT** requests, e.g. **signalk-empirbusnxt-plugin**. To be able to control switches, the device must be given "read/write" permission to SignalK.');
 
   @override
   bool get hasPerBoxSettings => true;
@@ -883,11 +843,7 @@ class ElectricalSwitchBox extends BoxWidget {
   }
 
   @override
-  Widget? getSettingsHelp() => const HelpTextWidget('''To be able to control switches, the device must be given "read/write" permission to signalk. Request an Auth Token and without closing the settings page authorise the device in the signalk web interface. When the Auth Token is shown, the settings page can be closed.
-The Client ID can be set to reflect the instrument's location, e.g. "boatinstrument-electrical-switches-tablet". Or the ID can be set to the same value for all instruments to share the same authorisation.''');
-
-  @override
-  Widget? getPerBoxSettingsHelp() => const HelpTextWidget('For a path of "electrical.switch.1.state" the ID is "1"');
+  Widget? getPerBoxSettingsHelp() => const HelpPage(text: 'For a path of "electrical.switch.1.state" the ID is "1"');
 
   @override
   State<ElectricalSwitchBox> createState() => _ElectricalSwitchBoxState();
@@ -909,7 +865,6 @@ class _ElectricalSwitchBoxState extends State<ElectricalSwitchBox> with SwitchCo
 
   @override
   Widget build(BuildContext context) {
-    TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
     const double pad = 5.0;
 
     List<Widget> dimmerList = [];
@@ -953,7 +908,7 @@ class _ElectricalSwitchBoxState extends State<ElectricalSwitchBox> with SwitchCo
       });
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(padding: const EdgeInsets.all(pad), child: HeaderText('Switch ${_switch.name??_switch.id}', style: style)),
+        Padding(padding: const EdgeInsets.all(pad), child: HeaderText('Switch ${_switch.name??_switch.id}')),
         Center(child: toggleSwitch),
         Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: dimmerList)
       ]);
@@ -963,7 +918,7 @@ class _ElectricalSwitchBoxState extends State<ElectricalSwitchBox> with SwitchCo
     setState(() {
       _switch.state = state;
     });
-    _sendCommand(widget.config, context, _settings.authToken, _switch.id, 'state', '{"value": $state}');
+    _sendCommand(widget.config, context, _switch.id, 'state', '{"value": $state}');
   }
 
   void _setDimmer(_ElectricalSwitch s, double dimmingLevel) {
@@ -972,11 +927,11 @@ class _ElectricalSwitchBoxState extends State<ElectricalSwitchBox> with SwitchCo
       dimmingLevel = dimmingLevel<0 ? 0 : dimmingLevel;
       s.dimmingLevel = dimmingLevel;
     });
-    _sendCommand(widget.config, context, _settings.authToken, s.id, 'dimmingLevel', '{"value": $dimmingLevel}');
+    _sendCommand(widget.config, context, s.id, 'dimmingLevel', '{"value": $dimmingLevel}');
   }
 
-  void _onUpdate(List<Update>? updates) {
-    if(updates == null) {
+  void _onUpdate(List<Update> updates) {
+    if(updates[0].value == null) {
       _switch.state = _switch.dimmingLevel = null;
     } else {
       for (Update u in updates) {
@@ -1023,8 +978,8 @@ abstract class PowerGraphBackground extends BackgroundData {
   Map<String, Power> get power;
 
   @override
-  processUpdates(List<Update>? updates) {
-    if(updates == null) {
+  processUpdates(List<Update> updates) {
+    if(updates[0].value == null) {
       power.clear();
     } else {
       DateTime now = controller!.now();

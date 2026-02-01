@@ -1,6 +1,6 @@
 flutter clean
 flutter pub get
-dart run build_runner build --delete-conflicting-outputs
+dart run build_runner build
 
 # for local Android install
 flutter build apk --no-shrink
@@ -11,6 +11,6 @@ flutter build ios
 
 curl http://localhost:3000/signalk/v1/api/vessels/self/environment/depth/belowKeel
 
-python3 -m json.tool /Users/admin//Library/Containers/name.seeley.phil.boatinstrument/Data/Documents/boatinstrument.json
+python3 -m json.tool ~/Documents/boatinstrument.json
 
 dart run msix:create --store

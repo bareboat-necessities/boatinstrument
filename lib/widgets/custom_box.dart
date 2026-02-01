@@ -238,7 +238,7 @@ class _SettingsState extends State<_SettingsWidget> {
       ),
       ListTile(
         leading: const Text("Title:"),
-        title: TextFormField(
+        title: BiTextFormField(
             initialValue: s.title,
             onChanged: (value) => s.title = value)
       ),
@@ -254,20 +254,20 @@ class _SettingsState extends State<_SettingsWidget> {
       ),
       ListTile(
           leading: const Text("Units:"),
-          title: TextFormField(
+          title: BiTextFormField(
               initialValue: s.units,
               onChanged: (value) => s.units = value)
       ),
       ListTile(
         leading: const Text("Multiplier:"),
-        title: TextFormField(
+        title: BiTextFormField(
             initialValue: s.multiplier.toString(),
             onChanged: (value) => s.multiplier = double.tryParse(value)??1),
       ),
       if({CustomDoubleValueBox}.contains(b.runtimeType))
         ListTile(
           leading: const Text("Precision:"),
-          title: TextFormField(
+          title: BiTextFormField(
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               initialValue: s.precision.toString(),
@@ -276,7 +276,7 @@ class _SettingsState extends State<_SettingsWidget> {
       if({CustomDoubleValueBox}.contains(b.runtimeType))
         ListTile(
           leading: const Text("Min Length:"),
-          title: TextFormField(
+          title: BiTextFormField(
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               initialValue: s.minLen.toString(),
@@ -284,20 +284,20 @@ class _SettingsState extends State<_SettingsWidget> {
         ),
       ListTile(
         leading: const Text("Min Value:"),
-        title: TextFormField(
+        title: BiTextFormField(
             initialValue: (s.minValue??'').toString(),
             onChanged: (value) => s.minValue = double.tryParse(value)),
       ),
       ListTile(
         leading: const Text("Max Value:"),
-        title: TextFormField(
+        title: BiTextFormField(
             initialValue: (s.maxValue??'').toString(),
             onChanged: (value) => s.maxValue = double.tryParse(value)),
       ),
       if({CustomDoubleValueSemiGaugeBox, CustomDoubleValueCircularGaugeBox, CustomDoubleValueBarGaugeBox}.contains(b.runtimeType))
         ListTile(
           leading: const Text("Step:"),
-          title: TextFormField(
+          title: BiTextFormField(
               initialValue: s.step.toString(),
               onChanged: (value) => s.step = double.tryParse(value)??1),
         ),
@@ -440,19 +440,15 @@ class _DebugBoxState extends State<DebugBox> {
     });
   }
 
-  void _onUpdate(List<Update>? updates) {
+  void _onUpdate(List<Update> updates) {
     if(_pause) {
       return;
     }
 
-    if (updates == null) {
-      _data = null;
-    } else {
-      if(mounted) {
-          setState(() {
-          _data = '${_data??''}\n${updates.toString()}';
-        });
-      }
+    if(mounted) {
+        setState(() {
+        _data = '${_data??''}\n${updates.toString()}';
+      });
     }
   }
 }
@@ -483,7 +479,7 @@ class _DebugSettingsState extends State<_DebugSettingsWidget> {
       ),
       ListTile(
           leading: const Text("Signalk Path:"),
-          title: TextFormField(
+          title: BiTextFormField(
               initialValue: s.path,
               onChanged: (value) => s.path = value)
       ),
@@ -520,7 +516,7 @@ class CustomTextBox extends BoxWidget {
   }
 
   @override
-  Widget? getPerBoxSettingsHelp() => const HelpTextWidget('''Add SignalK Path data by selecting the Path and pressing "+" to append to the template.
+  Widget? getPerBoxSettingsHelp() => const HelpPage(text: '''Add SignalK **Path** data by selecting the Path and pressing ![Image](assets/icons/__THEME__/add.png) to append to the template.
 
 Note: as this Box is intended to display static data like vessel Name or MMSI, the data items are only retrieved once from SignalK.''');
 
@@ -541,36 +537,22 @@ class _CustomTextBoxState extends State<CustomTextBox> {
 
   @override
   Widget build(BuildContext context) {
-    List<String> lines = _formatter.format(_pathData).split('\n');
+    String text = _formatter.format(_pathData);
 
-    if(widget.config.editMode && lines.length == 1 && lines[0].isEmpty) {
-      lines = ['Your text here'];
+    if(widget.config.editMode && text.isEmpty) {
+      text = 'Your text here';
     }
 
-    String max = '-';
-    int numLines = 1;
-    if(lines.isNotEmpty) {
-      numLines = lines.length;
-      max = lines.reduce((a, b) {return a.length > b.length ? a : b;});
-    }
-
-    TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
-    double fontSize = maxFontSize(max, style,
-        ((widget.config.constraints.maxHeight - style.fontSize!) / numLines),
-        widget.config.constraints.maxWidth);
-
-    return Center(child: Text(lines.join('\n'), textScaler: TextScaler.noScaling,  style: style.copyWith(fontSize: fontSize)));
+    return Center(child: Padding(padding: EdgeInsets.all(5), child:  MaxTextWidget(text)));
   }
 
-  void _onUpdate(List<Update>? updates) {
-    if(updates != null) {
-      if(mounted) {
-        setState(() {
-          for(Update u in updates) {
-            _pathData[u.path] = u.value.toString();
-          }
-        });
-      }
+  void _onUpdate(List<Update> updates) {
+    if(mounted) {
+      setState(() {
+        for(Update u in updates) {
+          _pathData[u.path] = (u.value == null) ? '' : u.value.toString();
+        }
+      });
     }
   }
 }
@@ -600,7 +582,7 @@ class _CustomTextBoxSettingsState extends State<_CustomTextBoxSettingsWidget> {
     return ListView(children: [
       ListTile(key: UniqueKey(),
           leading: const Text("Text\nTemplate:"),
-          title: TextFormField(
+          title: BiTextFormField(
             textInputAction: TextInputAction.newline,
             keyboardType: TextInputType.multiline,
             minLines: 2,

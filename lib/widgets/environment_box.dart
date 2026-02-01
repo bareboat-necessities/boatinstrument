@@ -240,7 +240,7 @@ class SetAndDriftBox extends BoxWidget {
   String get id => sid;
 }
 
-class _SetAndDriftBoxState extends State<SetAndDriftBox> {
+class _SetAndDriftBoxState extends HeadedTextBoxState<SetAndDriftBox> {
   double? _set;
   double? _drift;
   double? _displayDrift;
@@ -253,31 +253,21 @@ class _SetAndDriftBoxState extends State<SetAndDriftBox> {
 
   @override
   Widget build(BuildContext context) {
-    TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
-    const double pad = 5.0;
-
     if(widget.config.editMode) {
       _set = deg2Rad(123);
       _displayDrift = 12.3;
     }
 
-    String text = (_set == null || _displayDrift == null) ?
+    header = 'Set&Drift $degreesUnits-${widget.config.controller.speedUnits.unit}';
+    text = (_set == null || _displayDrift == null) ?
       '-\n-' :
       fmt.format('{:3}\n{:.1f}', rad2Deg(_set), _displayDrift);
 
-    double fontSize = maxFontSize(text, style,
-        (widget.config.constraints.maxHeight - style.fontSize! - (3 * pad)) / 2,
-        widget.config.constraints.maxWidth - (2 * pad));
-
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: HeaderText('Set&Drift deg-${widget.config.controller.speedUnits.unit}', style: style)),
-      // We need to disable the device text scaling as this interferes with our text scaling.
-      Expanded(child: Center(child: Padding(padding: const EdgeInsets.all(pad), child: Text(text, textScaler: TextScaler.noScaling,  style: style.copyWith(fontSize: fontSize)))))
-    ]);
+    return super.build(context);
   }
 
-  void _processData(List<Update>? updates) {
-    if(updates == null) {
+  void _processData(List<Update> updates) {
+    if(updates[0].value == null) {
       _set = _drift = _displayDrift = null;
     } else {
       try {
@@ -387,7 +377,7 @@ abstract class CelestialBox extends BoxWidget {
   }
 
   @override
-  Widget? getSettingsHelp() => const HelpTextWidget('For a full list of formats see https://api.flutter.dev/flutter/intl/DateFormat-class.html');
+  Widget? getSettingsHelp() => const HelpPage(text: 'For a full list of formats see https://pub.dev/documentation/intl/latest/intl/DateFormat-class.html');
 }
 
 class _CelestialSettingsWidget extends BoxSettingsWidget {
@@ -413,7 +403,7 @@ class _CelestialSettingsState extends State<_CelestialSettingsWidget> {
     return ListView(children: [
       ListTile(
           leading: const Text('Time Format:'),
-          title: TextFormField(
+          title: BiTextFormField(
               initialValue: s.timeFormat,
               onChanged: (value) => s.timeFormat = value)
       ),
@@ -427,7 +417,7 @@ class SunlightBox extends CelestialBox {
   SunlightBox(super.config, {super.key});
 
   @override
-  Widget? getHelp(BuildContext context) => const HelpTextWidget('Ensure the signalk-derived-data plugin is installed on signalk and the "Sets environment.sunlight.times.*" is enabled.');
+  Widget? getHelp() => const HelpPage(text: 'Ensure the **signalk-derived-data** plugin is installed on signalk and the "Sets environment.sunlight.times.*" is enabled.');
 
   @override
   State<SunlightBox> createState() => _SunlightBox();
@@ -440,7 +430,7 @@ class _Time {
   const _Time(this.name, this.time);
 }
 
-class _SunlightBox extends State<SunlightBox> {
+class _SunlightBox extends HeadedTextBoxState<SunlightBox> {
   static const int _numTimes = 7;
   bool _utc = false;
   List<_Time?> _times = List.filled(_numTimes, null);
@@ -448,6 +438,8 @@ class _SunlightBox extends State<SunlightBox> {
   @override
   void initState() {
     super.initState();
+    header = 'Sunlight';
+    alignment = Alignment.topCenter;
     widget.config.controller.configure(onUpdate: _onUpdate, paths: {'environment.sunlight.times.*'}, dataType: SignalKDataType.infrequent);
   }
 
@@ -457,37 +449,27 @@ class _SunlightBox extends State<SunlightBox> {
     final now = widget.config.controller.now();
 
     TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
-    const double pad = 5.0;
 
     if(widget.config.editMode) {
       _times = List.filled(_numTimes, _Time('Time:    ', now));
     }
 
-    String textSample = 'Time:     ${fmt.format(now)}';
-    double fontSize = maxFontSize(textSample, style,
-        (widget.config.constraints.maxHeight - style.fontSize! - (3 * pad)) / _numTimes,
-        widget.config.constraints.maxWidth - (2 * pad));
-
-    List<Widget> timeWidgets = [];
+    StringBuffer textBuffer = StringBuffer();
     for(int i = 0; i<_times.length; ++i) {
       _Time? t = _times[i];
-      // We need to disable the device text scaling as this interferes with our text scaling.
       if(t == null) {
-        timeWidgets.add(Text('-', textScaler: TextScaler.noScaling,  style: style.copyWith(fontSize: fontSize)));
+        textBuffer.writeln('-');
       } else {
-        TextDecoration? d;
+        textBuffer.writeln('${t.name} ${fmt.format(_utc?t.time.toUtc():t.time.toLocal())}');
         if(i < _times.length-1 && now.compareTo(t.time) >= 0 && now.compareTo(_times[i+1]?.time??now) < 0) {
-          d = TextDecoration.underline;
+          textBuffer.writeln('\u23BC\u23BC\u23BC\u23BC\u23BC${fmt.format(_utc?now.toUtc():now.toLocal())}\u23BC\u23BC\u23BC\u23BC\u23BC');
         }
-        timeWidgets.add(Text('${t.name} ${fmt.format(_utc?t.time.toUtc():t.time.toLocal())}', textScaler: TextScaler.noScaling,  style: style.copyWith(fontSize: fontSize, decoration: d)));
       }
     }
-    return Stack(children: [
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: HeaderText('Sunlight', style: style)),
-        Padding(padding: const EdgeInsets.all(pad), child: Column(children: timeWidgets))]),
-      Positioned(top: 0, right: 0, child: TextButton(onPressed: _toggleUTC, child: Text('UTC', style: style.copyWith(decoration: _utc ? null : TextDecoration.lineThrough))))
-    ]);
+    text = textBuffer.toString();
+    actions = [TextButton(onPressed: _toggleUTC, child: Text('UTC', style: style.copyWith(decoration: _utc ? null : TextDecoration.lineThrough)))];
+
+    return super.build(context);
   }
 
   void _toggleUTC() {
@@ -496,42 +478,36 @@ class _SunlightBox extends State<SunlightBox> {
     });
   }
 
-  void _onUpdate(List<Update>? updates) {
-    if(updates == null) {
-      _times = List.filled(_numTimes, null);
-    } else {
-      for (Update u in updates) {
-        try {
-          if(u.value == null) continue;
-          
-          DateTime dt = DateTime.parse(u.value);
+  void _onUpdate(List<Update> updates) {
+    for (Update u in updates) {
+      try {        
+        DateTime? dt = u.value == null?null:DateTime.parse(u.value);
 
-          switch (u.path) {
-            case 'environment.sunlight.times.nauticalDawn':
-              _times[0] = _Time('Naut Dwn:', dt);
-              break;
-            case 'environment.sunlight.times.dawn':
-              _times[1] = _Time('Dawn:    ', dt);
-              break;
-            case 'environment.sunlight.times.sunrise':
-              _times[2] = _Time('Rise:    ', dt);
-              break;
-            case 'environment.sunlight.times.solarNoon':
-              _times[3] = _Time('Sol Noon:', dt);
-              break;
-            case 'environment.sunlight.times.sunset':
-              _times[4] = _Time('Set:     ', dt);
-              break;
-            case 'environment.sunlight.times.dusk':
-              _times[5] = _Time('Dusk:    ', dt);
-              break;
-            case 'environment.sunlight.times.nauticalDusk':
-              _times[6] = _Time('Naut Dsk:', dt);
-              break;
-          }
-        } catch (e) {
-          widget.config.controller.l.e("Error converting $u", error: e);
+        switch (u.path) {
+          case 'environment.sunlight.times.nauticalDawn':
+            _times[0] = u.value == null?null:_Time('Naut Dwn:', dt!);
+            break;
+          case 'environment.sunlight.times.dawn':
+            _times[1] = u.value == null?null:_Time('Dawn:    ', dt!);
+            break;
+          case 'environment.sunlight.times.sunrise':
+            _times[2] = u.value == null?null:_Time('Rise:    ', dt!);
+            break;
+          case 'environment.sunlight.times.solarNoon':
+            _times[3] = u.value == null?null:_Time('Sol Noon:', dt!);
+            break;
+          case 'environment.sunlight.times.sunset':
+            _times[4] = u.value == null?null:_Time('Set:     ', dt!);
+            break;
+          case 'environment.sunlight.times.dusk':
+            _times[5] = u.value == null?null:_Time('Dusk:    ', dt!);
+            break;
+          case 'environment.sunlight.times.nauticalDusk':
+            _times[6] = u.value == null?null:_Time('Naut Dsk:', dt!);
+            break;
         }
+      } catch (e) {
+        widget.config.controller.l.e("Error converting $u", error: e);
       }
     }
 
@@ -597,7 +573,7 @@ class MoonBox extends CelestialBox {
   }
 
   @override
-  Widget? getHelp(BuildContext context) => const HelpTextWidget('Ensure the signalk-derived-data plugin is installed on signalk and the "Sets environment.moon.*" is enabled.');
+  Widget? getHelp() => const HelpPage(text: 'Ensure the **signalk-derived-data** plugin is installed on signalk and the "Sets environment.moon.*" is enabled.');
 
   @override
   bool get hasPerBoxSettings => true;
@@ -611,7 +587,7 @@ class MoonBox extends CelestialBox {
   State<MoonBox> createState() => _MoonBox();
 }
 
-class _MoonBox extends HeadedBoxState<MoonBox> {
+class _MoonBox extends HeadedTextBoxState<MoonBox> {
   bool _utc = false;
   DateTime? _rise, _set;
   double? _fraction;
@@ -619,7 +595,7 @@ class _MoonBox extends HeadedBoxState<MoonBox> {
 
   @override
   void initState() {
-    alignment = Alignment.topCenter;
+    alignment = Alignment.topLeft;
     super.initState();
     widget.config.controller.configure(onUpdate: _onUpdate, paths: {'environment.moon.*'}, dataType: SignalKDataType.infrequent);
   }
@@ -627,7 +603,10 @@ class _MoonBox extends HeadedBoxState<MoonBox> {
   @override
   Widget build(BuildContext context) {
     final fmt = DateFormat(widget._settings.timeFormat);
-    TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
+    ThemeData td = Theme.of(context);
+    TextStyle style = td.textTheme.titleMedium!.copyWith(height: 1.0);
+    
+    if(widget._perBoxSettings.showMoon) textBgColor = td.colorScheme.surface;
 
     if(widget.config.editMode) {
       _rise = _set = widget.config.controller.now().toLocal();
@@ -643,14 +622,13 @@ Set:   ${(_set == null) ? '-' : fmt.format(_utc?_set!.toUtc():_set!.toLocal())}
 Phase: ${(_fraction == null) ? '-' : (_fraction!*100).toInt()}%
 ${(_phaseName == null) ? '-' : _phaseName}''';
 
-    lines = 4;
+    actions = [TextButton(onPressed: _toggleUTC, child: Text('UTC', style: style.copyWith(decoration: _utc ? null : TextDecoration.lineThrough)))];
 
     return Stack(children: [
       if(widget._perBoxSettings.showMoon)
-        Padding(padding: const EdgeInsets.all(HeadedBoxState.pad), child: RepaintBoundary(child: CustomPaint(size: Size.infinite,
+        Padding(padding: const EdgeInsets.all(HeadedTextBoxState.pad), child: RepaintBoundary(child: CustomPaint(size: Size.infinite,
           painter: _MoonPainter(_fraction??0)))),
-      super.build(context),
-      Positioned(top: 0, right: 0, child: TextButton(onPressed: _toggleUTC, child: Text('UTC', style: style.copyWith(decoration: _utc ? null : TextDecoration.lineThrough))))
+      super.build(context)
     ]);
   }
 
@@ -660,29 +638,25 @@ ${(_phaseName == null) ? '-' : _phaseName}''';
     });
   }
   
-  void _onUpdate(List<Update>? updates) {
-    if(updates == null) {
-      _rise = _set = _fraction = _phaseName = null;
-    } else {
-      for (Update u in updates) {
-        try {
-          switch (u.path) {
-            case 'environment.moon.times.rise':
-              _rise = DateTime.parse(u.value);
-              break;
-            case 'environment.moon.times.set':
-              _set = DateTime.parse(u.value);
-              break;
-            case 'environment.moon.fraction':
-              _fraction = (u.value as num).toDouble();
-              break;
-            case 'environment.moon.phaseName':
-              _phaseName = u.value;
-              break;
-          }
-        } catch (e) {
-          widget.config.controller.l.e("Error converting $u", error: e);
+  void _onUpdate(List<Update> updates) {
+    for (Update u in updates) {
+      try {
+        switch (u.path) {
+          case 'environment.moon.times.rise':
+            _rise = (u.value == null)?null:DateTime.parse(u.value);
+            break;
+          case 'environment.moon.times.set':
+            _set = (u.value == null)?null:DateTime.parse(u.value);
+            break;
+          case 'environment.moon.fraction':
+            _fraction = (u.value == null)?null:(u.value as num).toDouble();
+            break;
+          case 'environment.moon.phaseName':
+            _phaseName = (u.value == null)?null:u.value;
+            break;
         }
+      } catch (e) {
+        widget.config.controller.l.e("Error converting $u", error: e);
       }
     }
 

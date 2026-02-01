@@ -36,7 +36,7 @@ class WebViewBox extends BoxWidget {
   }
 
   @override
-  Widget? getPerBoxSettingsHelp() => const HelpTextWidget('''Enter the full URL of the Web Page to display.''');
+  Widget? getPerBoxSettingsHelp() => const HelpPage(text: '''Enter the full **URL** of the Web Page to display.''');
 }
 
 class _WebViewBoxState extends State<WebViewBox> {
@@ -49,8 +49,8 @@ class _WebViewBoxState extends State<WebViewBox> {
 
   @override
   Widget build(BuildContext context) {
-    if(Platform.isMacOS) {
-      return const Center(child: Text('Not implemented on MacOS'));
+    if(Platform.isMacOS || Platform.isLinux) {
+      return const Center(child: Text('Not implemented on this platform'));
     }
     if(widget._settings.url.isEmpty) {
       return Container(padding: const EdgeInsets.all(40.0), alignment: Alignment.topCenter, child: const Text('No Web Page set'));
@@ -87,7 +87,7 @@ class _SettingsState extends State<_SettingsWidget> {
     return ListView(children: [
       ListTile(
           leading: const Text("Web Site:"),
-          title: TextFormField(
+          title: BiTextFormField(
               initialValue: s.url,
               onChanged: (value) => s.url = value.trim())
       ),

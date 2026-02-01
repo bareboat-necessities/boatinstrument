@@ -314,9 +314,9 @@ class WindRoseBox extends BoxWidget {
   }
 
   @override
-  Widget? getPerBoxSettingsHelp() => const HelpTextWidget('''In "Auto" mode the Rose will switch between the "Normal" and "Close Haul" displays if the needle transitions over 60 degrees for more than the "Auto Switch Delay".
+  Widget? getPerBoxSettingsHelp() => const HelpPage(text: '''In **Auto** mode the Rose will switch between the "Normal" and "Close Haul" displays if the needle transitions over 60 degrees for more than the **Auto Switch Delay**.
   
-The Switch Button allows you to cycle through the Wind Rose types from the display. If the button is "Unlocked" the display is in "Auto" mode.''');
+The **Switch Button** allows you to cycle through the Wind Rose types from the display. If the button is "Unlocked" the display is in "Auto" mode.''');
 }
 
 class _WindRoseBoxState extends State<WindRoseBox> {
@@ -413,16 +413,15 @@ class _WindRoseBoxState extends State<WindRoseBox> {
     });
   }
 
-  void _processData(List<Update>? updates) {
-    if(updates == null) {
-      _windAngleApparent = _windAngleTrue = _windSpeedApparent = _windSpeedTrue = null;
-    } else {
-      for (Update u in updates) {
-        try {
-          switch (u.path) {
-            case 'environment.wind.angleApparent':
-              double latest = (u.value as num).toDouble();
-
+  void _processData(List<Update> updates) {
+    for (Update u in updates) {
+      try {
+        double latest = (u.value == null) ? 0 : (u.value as num).toDouble();
+        switch (u.path) {
+          case 'environment.wind.angleApparent':
+            if(u.value == null) {
+              _windAngleApparent = null;
+            } else {
               if(_windAngleApparent == null && widget._settings.type == WindRoseType.auto) {
                 _displayType = (rad2Deg(latest.abs()) <= 60) ? WindRoseType.closeHaul : WindRoseType.normal;
               }
@@ -431,30 +430,39 @@ class _WindRoseBoxState extends State<WindRoseBox> {
                   _windAngleApparent ?? latest, latest,
                   smooth: widget.config.controller.valueSmoothing,
                   relative: true);
-              break;
-            case 'environment.wind.angleTrueWater':
-              double latest = (u.value as num).toDouble();
+            }
+            break;
+          case 'environment.wind.angleTrueWater':
+            if(u.value == null) {
+              _windAngleTrue = null;
+            } else {
               _windAngleTrue = averageAngle(
                   _windAngleTrue ?? latest, latest,
                   smooth: widget.config.controller.valueSmoothing,
                   relative: true);
-              break;
-            case 'environment.wind.speedApparent':
-              double latest = (u.value as num).toDouble();
+            }
+            break;
+          case 'environment.wind.speedApparent':
+            if(u.value == null) {
+              _windSpeedApparent = null;
+            } else {
               _windSpeedApparent = averageDouble(
                   _windSpeedApparent ?? latest, latest,
                   smooth: widget.config.controller.valueSmoothing);
-              break;
-            case 'environment.wind.speedTrue':
-              double latest = (u.value as num).toDouble();
+            }
+            break;
+          case 'environment.wind.speedTrue':
+            if(u.value == null) {
+              _windSpeedTrue = null;
+            } else {
               _windSpeedTrue = averageDouble(
                   _windSpeedTrue ?? latest, latest,
                   smooth: widget.config.controller.valueSmoothing);
-              break;
-          }
-        } catch (e) {
-          widget.config.controller.l.e("Error converting $u", error: e);
+            }
+            break;
         }
+      } catch (e) {
+        widget.config.controller.l.e("Error converting $u", error: e);
       }
     }
 

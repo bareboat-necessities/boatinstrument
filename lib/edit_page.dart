@@ -39,6 +39,7 @@ final List<BoxDetails> boxDetails = [
   BoxDetails(AutopilotStatusBox.sid, (config) {return AutopilotStatusBox(config, key: UniqueKey());}),
   BoxDetails(AutopilotStateControlHorizontalBox.sid, (config) {return AutopilotStateControlHorizontalBox(config, key: UniqueKey());}),
   BoxDetails(AutopilotStateControlVerticalBox.sid, (config) {return AutopilotStateControlVerticalBox(config, key: UniqueKey());}),
+  BoxDetails(AutopilotReefingControlBox.sid, experimental: true, (config) {return AutopilotReefingControlBox(config, key: UniqueKey());}),
   BoxDetails(AutopilotHeadingControlHorizontalBox.sid, (config) {return AutopilotHeadingControlHorizontalBox(config, key: UniqueKey());}),
   BoxDetails(AutopilotHeadingControlVerticalBox.sid, (config) {return AutopilotHeadingControlVerticalBox(config, key: UniqueKey());}),
   BoxDetails(WebViewBox.sid, experimental: true, (config) {return WebViewBox(config, key: UniqueKey());}),
@@ -111,6 +112,17 @@ final List<BoxDetails> boxDetails = [
   BoxDetails(RaspberryPiBox.sid, experimental: true, (config) {return RaspberryPiBox(config, key: UniqueKey());}),
   BoxDetails(BatteryPowerGraph.sid, graph: true, background: (ctrl) {BatteryPowerGraphBackground(controller: ctrl);}, (config) {return BatteryPowerGraph(config, key: UniqueKey());}),
   BoxDetails(SolarPowerGraph.sid, graph: true, background: (ctrl) {SolarPowerGraphBackground(controller: ctrl);}, (config) {return SolarPowerGraph(config, key: UniqueKey());}),
+  BoxDetails(CompassRoseBox.sid, gauge: true, (config) {return CompassRoseBox(config, key: UniqueKey());}),
+  BoxDetails(CompassGaugeBox.sid, gauge: true, (config) {return CompassGaugeBox(config, key: UniqueKey());}),
+  BoxDetails(StarlinkBox.sid, (config) {return StarlinkBox(config, key: UniqueKey());}),
+  BoxDetails(RemoteControlBox.sid, (config) {return RemoteControlBox(config, key: UniqueKey());}),
+  BoxDetails(TimerDisplayBox.sid, (config) {return TimerDisplayBox(config, key: UniqueKey());}),
+  BoxDetails(TimersSetupBox.sid, (config) {return TimersSetupBox(config, key: UniqueKey());}),
+  BoxDetails(StopwatchBox.sid, (config) {return StopwatchBox(config, key: UniqueKey());}),
+  BoxDetails(SHRPiBox.sid, experimental: true, (config) {return SHRPiBox(config, key: UniqueKey());}),
+  BoxDetails(NavigationLogBox.sid, (config) {return NavigationLogBox(config, key: UniqueKey());}),
+  BoxDetails(NavigationTripLogBox.sid, (config) {return NavigationTripLogBox(config, key: UniqueKey());}),
+  BoxDetails(LaunchBox.sid, (config) {return LaunchBox(config, key: UniqueKey());}),
 ];
 
 class _EditPageState extends State<_EditPage> {
@@ -196,6 +208,8 @@ class _EditPageState extends State<_EditPage> {
         _widgetMenuEntry(MoonBox.sid, 'Moonlight'),
       ]),
       _widgetSubMenuEntry(box, 'Navigation', [
+        _widgetMenuEntry(CompassRoseBox.sid, 'Compass Rose'),
+        _widgetMenuEntry(CompassGaugeBox.sid, 'Compass Gauge'),
         _widgetSubMenuEntry(box, 'Speed', [
           _widgetMenuEntry(SpeedOverGroundBox.sid, 'Over Ground'),
           _widgetMenuEntry(MaxSpeedOverGroundBox.sid, 'Max SOG'),
@@ -219,6 +233,10 @@ class _EditPageState extends State<_EditPage> {
         ]),
         _widgetMenuEntry(RateOfTurnBox.sid, 'Rate of Turn'),
         _widgetMenuEntry(MagneticVariationBox.sid, 'Magnetic Variation'),
+        _widgetSubMenuEntry(box, 'Log', [
+          _widgetMenuEntry(NavigationLogBox.sid, 'Total'),
+          _widgetMenuEntry(NavigationTripLogBox.sid, 'Trip'),
+        ]),
       ]),
       _widgetSubMenuEntry(box, 'Boat', [
         _widgetSubMenuEntry(box, 'Speed', [
@@ -255,6 +273,7 @@ class _EditPageState extends State<_EditPage> {
           _widgetMenuEntry(AutopilotHeadingControlHorizontalBox.sid, 'Horizontal'),
           _widgetMenuEntry(AutopilotHeadingControlVerticalBox.sid, 'Vertical'),
         ]),
+        _widgetMenuEntry(AutopilotReefingControlBox.sid, 'Reefing Control'),
       ]),
       _widgetSubMenuEntry(box, 'Electrical', [
         _widgetSubMenuEntry(box, 'Batteries', [
@@ -289,24 +308,37 @@ class _EditPageState extends State<_EditPage> {
         _widgetMenuEntry(EngineExhaustTempBox.sid, 'Exhaust Temp'),
         _widgetMenuEntry(EngineFuelRateBox.sid, 'Fuel Rate'),
       ]),
-      _widgetSubMenuEntry(box, 'Raspberry Pi', [
-        _widgetMenuEntry(RPiCPUTemperatureBox.sid, 'CPU Temp'),
-        _widgetMenuEntry(RPiGPUTemperatureBox.sid, 'GPU Temp'),
-        _widgetMenuEntry(RPiCPUUtilisationBox.sid, 'CPU Utilisation'),
-        _widgetMenuEntry(RPiMemoryUtilisationBox.sid, 'Memory Utilisation'),
-        _widgetMenuEntry(RPiSDUtilisationBox.sid, 'Disk Utilisation'),
-        _widgetMenuEntry(RaspberryPiBox.sid, 'Raspberry Pi'),
+      _widgetSubMenuEntry(box, 'Network', [
+        _widgetMenuEntry(StarlinkBox.sid, 'Starlink'),
       ]),
-      _widgetMenuEntry(DateTimeBox.sid, 'Date/Time'),
+      _widgetSubMenuEntry(box, 'Hardware', [
+        _widgetSubMenuEntry(box, 'Raspberry Pi', [
+          _widgetMenuEntry(RPiCPUTemperatureBox.sid, 'CPU Temp'),
+          _widgetMenuEntry(RPiGPUTemperatureBox.sid, 'GPU Temp'),
+          _widgetMenuEntry(RPiCPUUtilisationBox.sid, 'CPU Utilisation'),
+          _widgetMenuEntry(RPiMemoryUtilisationBox.sid, 'Memory Utilisation'),
+          _widgetMenuEntry(RPiSDUtilisationBox.sid, 'Disk Utilisation'),
+          _widgetMenuEntry(RaspberryPiBox.sid, 'Raspberry Pi'),
+        ]),
+        _widgetMenuEntry(SHRPiBox.sid, 'Sailor Hat'),
+      ]),
+      _widgetSubMenuEntry(box, 'Time', [
+        _widgetMenuEntry(DateTimeBox.sid, 'Date/Time'),
+        _widgetMenuEntry(TimerDisplayBox.sid, 'Timer Display'),
+        _widgetMenuEntry(TimersSetupBox.sid, 'Timers Setup'),
+        _widgetMenuEntry(StopwatchBox.sid, 'Stopwatch'),
+      ]),
+      _widgetMenuEntry(CustomTextBox.sid, 'Text'),
       _widgetMenuEntry(AnchorAlarmBox.sid, 'Anchor Alarm'),
-      _widgetMenuEntry(WebViewBox.sid, 'Web View'),
+      _widgetMenuEntry(RemoteControlBox.sid, 'Remote Control'),
+      if(!Platform.isMacOS && !Platform.isLinux) _widgetMenuEntry(WebViewBox.sid, 'Web View'),
       _widgetMenuEntry(VNCBox.sid, 'VNC'),
       _widgetSubMenuEntry(box, 'Custom', [
-        _widgetMenuEntry(CustomTextBox.sid, 'Text'),
         _widgetMenuEntry(CustomDoubleValueBox.sid, 'Value'),
         _widgetMenuEntry(CustomDoubleValueSemiGaugeBox.sid, 'Semi Gauge'),
         _widgetMenuEntry(CustomDoubleValueCircularGaugeBox.sid, 'Circular Gauge'),
         _widgetMenuEntry(CustomDoubleValueBarGaugeBox.sid, 'Bar Gauge'),
+        _widgetMenuEntry(LaunchBox.sid, 'App Launcher'),
         _widgetMenuEntry(DebugBox.sid, 'Debug'),
       ]),
     ];
@@ -381,7 +413,7 @@ class _EditPageState extends State<_EditPage> {
 
             PopupMenuButton boxWidgetMenu = PopupMenuButton(
               routeSettings: RouteSettings(name: _boxMenuName),
-              icon: const Icon(Icons.list, color: Colors.blue),
+              icon: const Icon(Icons.format_list_bulleted, color: Colors.blue),
               tooltip: 'Box Type',
               shape: Border.all(color: Colors.grey),
               itemBuilder: (BuildContext context) {
@@ -401,7 +433,7 @@ class _EditPageState extends State<_EditPage> {
             BoxWidget editBoxWidget = getBoxDetails(box.id).build(BoxWidgetConfig(widget._controller, box.settings, const BoxConstraints(maxWidth: 1.0, maxHeight: 1.0), true));
 
             List<Widget> settingsButtons = [];
-            Widget? helpWidget = editBoxWidget.getHelp(context);
+            Widget? helpWidget = editBoxWidget.getHelp();
             if(helpWidget != null) {
               settingsButtons.add(IconButton(onPressed: () {_showHelpPage(helpWidget);}, icon: const Icon(Icons.help)));
             }
@@ -439,13 +471,13 @@ class _EditPageState extends State<_EditPage> {
       pageRowsPercent.add(pageRow.percentage);
     }
 
-    return Scaffold(
+    return PopScope(canPop: false, onPopInvokedWithResult: (didPop, result) {if(didPop) return; _discard();}, child: Scaffold(
       body: SafeArea(child: ResizableWidget(key: UniqueKey(), onResized: (infoList) {_onResize(infoList, widget._editPage.pageRows);}, isHorizontalSeparator: true, separatorColor: Colors.red, separatorSize: 16, percentages: pageRowsPercent, children: pageRows)),
       floatingActionButton: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
         IconButton(icon: const Icon(Icons.save), style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.green)), onPressed: _save),
         IconButton(icon: const Icon(Icons.close), style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.red)), onPressed: _discard)
       ])
-    );
+    ));
   }
 
   void _onResize(List<WidgetSizeInfo> infoList, List<_Resizable> r) {
@@ -572,18 +604,7 @@ class _EditPageState extends State<_EditPage> {
   }
 
   Future<void> _showSettingsPage (BoxWidget boxWidget) async {
-    BoxSettingsWidget boxSettingsWidget =  boxWidget.getSettingsWidget(widget._controller.getBoxSettingsJson(boxWidget.id))!;
-
-    await Navigator.push(
-        context, MaterialPageRoute(builder: (context) {
-          return _BoxSettingsPage(
-              boxSettingsWidget,
-              boxWidget.getSettingsHelp()
-          );
-        })
-    );
-
-    widget._controller._settings?.boxSettings[boxWidget.id] = boxSettingsWidget.getSettingsJson();
+    if(mounted) await widget._controller.showSettingsPage(context, boxWidget);
 
     setState(() {});
   }
@@ -603,7 +624,7 @@ class _EditPageState extends State<_EditPage> {
   Future<void> _showHelpPage (Widget helpWidget) async {
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) {
-      return _BoxHelpPage(helpWidget);
+      return helpWidget;
     }));
   }
 
@@ -640,29 +661,7 @@ class _BoxSettingsState extends State<_BoxSettingsPage> {
   Future<void> _showHelpPage () async {
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) {
-      return _BoxHelpPage(widget._helpWidget!);
+      return widget._helpWidget!;
     }));
-  }
-}
-
-class _BoxHelpPage extends StatefulWidget {
-  final Widget _helpWidget;
-
-  const _BoxHelpPage(this._helpWidget);
-
-  @override
-  createState() => _BoxHelpState();
-}
-
-class _BoxHelpState extends State<_BoxHelpPage> {
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          title: const Text('Help'),
-        ),
-        body: widget._helpWidget,
-    );
   }
 }

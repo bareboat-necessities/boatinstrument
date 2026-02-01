@@ -34,7 +34,6 @@ class _WindSpeedTrueBeaufortBoxState extends DoubleValueBoxState<WindSpeedTrueBe
 
   @override
   Widget build(BuildContext context) {
-    TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
     const double pad = 5.0;
 
     if(widget.config.editMode) {
@@ -43,14 +42,10 @@ class _WindSpeedTrueBeaufortBoxState extends DoubleValueBoxState<WindSpeedTrueBe
 
     String force = (displayValue == null) ? '-' : 'F${pow(displayValue!/0.836, 1.0/1.5).round()}';
 
-    double fontSize = maxFontSize(force, style,
-        widget.config.constraints.maxHeight - style.fontSize! - (3 * pad),
-        widget.config.constraints.maxWidth - (2 * pad));
-
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: HeaderText(widget.title, style: style)),
+      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: HeaderText(widget.title)),
       // We need to disable the device text scaling as this interferes with our text scaling.
-      Expanded(child: Center(child: Padding(padding: const EdgeInsets.all(pad), child: Text(force, textScaler: TextScaler.noScaling,  style: style.copyWith(fontSize: fontSize)))))
+      Expanded(child: Center(child: Padding(padding: const EdgeInsets.all(pad), child: MaxTextWidget(force))))
     ]);
   }
 }
@@ -143,14 +138,8 @@ class WindDirectionTrueBox extends DoubleValueBox {
 }
 
 class _WindDirectionTrueBoxState extends DoubleValueBoxState<WindDirectionTrueBox> {
-  static const List<String> _cardinalDirections = [
-    'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S',
-    'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW', 'N'
-  ];
-
   @override
   Widget build(BuildContext context) {
-    TextStyle style = Theme.of(context).textTheme.titleMedium!.copyWith(height: 1.0);
     const double pad = 5.0;
 
     if(widget.config.editMode) {
@@ -160,8 +149,7 @@ class _WindDirectionTrueBoxState extends DoubleValueBoxState<WindDirectionTrueBo
     String direction = (displayValue == null) ?
     '-' : fmt.format('{:${3}d}', rad2Deg(displayValue));
 
-    const f = (2*pi)/16;
-    String cardinal = (displayValue == null) ? '-' : _cardinalDirections[((displayValue!+(f/2))/f).toInt()];
+    String cardinal = rad2Cardinal(displayValue);
 
     String primaryText = direction;
     String subText = cardinal;
@@ -170,15 +158,10 @@ class _WindDirectionTrueBoxState extends DoubleValueBoxState<WindDirectionTrueBo
       subText = direction;
     }
 
-    double fontSize = maxFontSize(primaryText, style,
-        (widget.config.constraints.maxHeight - style.fontSize! - (3 * pad)),
-        widget.config.constraints.maxWidth - (2 * pad));
-
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: HeaderText('${widget.title} deg $subText', style: style)),
+      Padding(padding: const EdgeInsets.only(top: pad, left: pad), child: HeaderText('${widget.title} $subText $degreesUnits')),
       // We need to disable the device text scaling as this interferes with our text scaling.
-      Expanded(child: Center(child: Padding(padding: const EdgeInsets.all(pad), child: Text(primaryText, textScaler: TextScaler.noScaling,  style: style.copyWith(fontSize: fontSize)))))
-
+      Expanded(child: Center(child: Padding(padding: const EdgeInsets.all(pad), child: MaxTextWidget(primaryText))))
     ]);
   }
 }
